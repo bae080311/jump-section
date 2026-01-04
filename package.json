@@ -1,0 +1,23 @@
+{
+  "name": "jump-section",
+  "version": "1.0.0",
+  "description": "menu 클릭 시 해당하는 section으로 이동을 도와주는 라이브러리입니다",
+  "keywords": [
+    "scroll"
+  ],
+  "homepage": "https://github.com/bae080311/jump-section#readme",
+  "bugs": {
+    "url": "https://github.com/bae080311/jump-section/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bae080311/jump-section.git"
+  },
+  "license": "ISC",
+  "author": "k_jin.0",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm test"
+  }
+}
