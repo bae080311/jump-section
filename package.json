@@ -18,6 +18,15 @@
   "type": "commonjs",
   "main": "index.js",
   "scripts": {
-    "test": "npm test"
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest run --coverage",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "jsdom": "^27.4.0",
+    "vitest": "^4.0.16"
   }
 }
