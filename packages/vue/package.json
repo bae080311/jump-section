@@ -1,0 +1,18 @@
+{
+  "name": "@jump-section/vue",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@jump-section/core": "*"
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "peerDependencies": {
+    "vue": "^3.0.0"
+  }
+}
