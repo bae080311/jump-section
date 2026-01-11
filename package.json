@@ -1,6 +1,7 @@
 {
   "name": "jump-section",
   "version": "1.0.0",
+  "packageManager": "npm@11.4.2",
   "description": "menu 클릭 시 해당하는 section으로 이동을 도와주는 라이브러리입니다",
   "keywords": [
     "scroll"
@@ -15,27 +16,24 @@
   },
   "license": "ISC",
   "author": "k_jin.0",
-  "type": "commonjs",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE.md"
+  "private": true,
+  "workspaces": [
+    "packages/*"
   ],
   "scripts": {
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage",
-    "build": "tsc",
-    "prepublishOnly": "npm run build",
+    "build": "turbo build",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "check-exports": "turbo check-exports",
+    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "prepare": "husky"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.2",
     "husky": "^9.1.7",
     "jsdom": "^27.4.0",
     "prettier": "^3.7.4",
+    "turbo": "^2.3.3",
     "typescript": "^5.9.3",
     "vitest": "^4.0.16"
   }
