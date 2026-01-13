@@ -2,8 +2,8 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
 
 jobs:
   release:
@@ -33,16 +33,6 @@ jobs:
 
       - name: Build
         run: pnpm run build
-
-      - name: Extract version from tag
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Update package versions
-        run: |
-          cd packages/core && npm version ${{ steps.get_version.outputs.VERSION }} --no-git-tag-version
-          cd ../react && npm version ${{ steps.get_version.outputs.VERSION }} --no-git-tag-version
-          cd ../vue && npm version ${{ steps.get_version.outputs.VERSION }} --no-git-tag-version
 
       - name: Publish to npm
         run: |
