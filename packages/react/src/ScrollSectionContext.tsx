@@ -3,8 +3,10 @@ import { ScrollManager, ScrollOptions } from '@jump-section/core';
 
 const ScrollSectionContext = createContext<ScrollManager | null>(null);
 
-interface ScrollSectionProviderProps extends ScrollOptions {
+interface ScrollSectionProviderProps {
   children: React.ReactNode;
+  offset?: number;
+  behavior?: ScrollBehavior;
 }
 
 export const ScrollSectionProvider: React.FC<ScrollSectionProviderProps> = ({

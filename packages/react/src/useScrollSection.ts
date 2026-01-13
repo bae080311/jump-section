@@ -6,7 +6,7 @@ export const useScrollSection = (sectionId?: string) => {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   useEffect(() => {
-    const unsubscribe = manager.onActiveChange((id) => {
+    const unsubscribe = manager.onActiveChange((id: string | null) => {
       setActiveId(id);
     });
     return () => {
