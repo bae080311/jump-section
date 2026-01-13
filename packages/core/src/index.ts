@@ -1,1 +1,1 @@
-export const core = 'jump-section-core';
+export * from './ScrollManager';
