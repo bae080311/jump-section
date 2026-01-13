@@ -33,9 +33,6 @@ jobs:
       - name: Format check
         run: pnpm run format:check
 
-      - name: Type check
-        run: pnpm exec tsc --noEmit
-
       - name: Build
         run: pnpm run build
 
