@@ -23,6 +23,7 @@
     "lint": "turbo lint",
     "check-exports": "turbo check-exports",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,md}\"",
     "prepare": "husky"
   },
   "devDependencies": {

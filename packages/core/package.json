@@ -1,6 +1,20 @@
 {
   "name": "@jump-section/core",
   "version": "1.0.0",
+  "description": "Core scroll management library for jump-section",
+  "keywords": [
+    "scroll",
+    "navigation",
+    "section",
+    "jump"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bae080311/jump-section.git",
+    "directory": "packages/core"
+  },
+  "license": "ISC",
+  "author": "k_jin.0",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -11,5 +25,8 @@
   "scripts": {
     "build": "tsup",
     "test": "vitest run --environment jsdom"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

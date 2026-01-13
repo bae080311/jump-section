@@ -1,6 +1,22 @@
 {
   "name": "@jump-section/vue",
   "version": "1.0.0",
+  "description": "Vue composables for jump-section scroll management",
+  "keywords": [
+    "scroll",
+    "navigation",
+    "section",
+    "jump",
+    "vue",
+    "composables"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bae080311/jump-section.git",
+    "directory": "packages/vue"
+  },
+  "license": "ISC",
+  "author": "k_jin.0",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -17,5 +33,8 @@
   },
   "peerDependencies": {
     "vue": "^3.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

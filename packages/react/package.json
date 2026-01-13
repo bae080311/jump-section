@@ -1,6 +1,22 @@
 {
   "name": "@jump-section/react",
   "version": "1.0.0",
+  "description": "React hooks for jump-section scroll management",
+  "keywords": [
+    "scroll",
+    "navigation",
+    "section",
+    "jump",
+    "react",
+    "hooks"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bae080311/jump-section.git",
+    "directory": "packages/react"
+  },
+  "license": "ISC",
+  "author": "k_jin.0",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
@@ -18,5 +34,8 @@
   "peerDependencies": {
     "react": ">=16.8.0",
     "react-dom": ">=16.8.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
