@@ -5,7 +5,8 @@
     "declaration": true,
     "declarationMap": true,
     "strict": true,
-    "moduleResolution": "NodeNext"
+    "moduleResolution": "NodeNext",
+    "skipLibCheck": true
   },
   "include": ["packages"],
   "exclude": ["node_modules", "dist"]
