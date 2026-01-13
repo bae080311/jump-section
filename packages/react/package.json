@@ -2,16 +2,18 @@
   "name": "@jump-section/react",
   "version": "1.0.0",
   "main": "dist/index.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "files": [
     "dist"
   ],
   "dependencies": {
-    "@jump-section/core": "*"
+    "@jump-section/core": "workspace:*"
   },
   "scripts": {
-    "build": "tsc",
-    "test": "vitest run"
+    "build": "tsup",
+    "test": "vitest run --environment jsdom"
   },
   "peerDependencies": {
     "react": ">=16.8.0",

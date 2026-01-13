@@ -1,1 +1,1 @@
-export const vue = 'jump-section-vue';
+export * from './useScrollSection';
