@@ -2,11 +2,14 @@
   "name": "@jump-section/core",
   "version": "1.0.0",
   "main": "dist/index.js",
+  "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc"
+    "build": "tsup",
+    "test": "vitest run --environment jsdom"
   }
 }
