@@ -8,6 +8,6 @@
     "moduleResolution": "NodeNext",
     "skipLibCheck": true
   },
-  "include": ["packages"],
+  "include": ["packages", "docs"],
   "exclude": ["node_modules", "dist"]
 }

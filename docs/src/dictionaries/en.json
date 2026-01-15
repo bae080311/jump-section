@@ -1,0 +1,14 @@
+{
+  "navbar": {
+    "docs": "Documentation",
+    "examples": "Examples"
+  },
+  "hero": {
+    "new_badge": "New: jump-section v1.0 is now available",
+    "title_1": "Create Smooth",
+    "title_2": "Section Jumps.",
+    "description": "A lightweight, high-performance library for smooth scrolling and section-aware navigation in React, Vue, and Core JS.",
+    "get_started": "Get Started",
+    "github_repo": "GitHub Repository"
+  }
+}

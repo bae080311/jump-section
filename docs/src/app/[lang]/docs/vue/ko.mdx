@@ -1,0 +1,74 @@
+# Vue 3 API
+
+The `@jump-section/vue` package provides a composition API wrapper for Jump Section.
+
+## `ScrollSectionProvider`
+
+A utility component to provide the scroll manager via Vue's provide/inject.
+
+### Props
+
+- `offset?: number`: Vertical offset for scroll position (default: `0`).
+- `behavior?: 'smooth' | 'auto'`: The scroll behavior (default: `'smooth'`).
+
+```vue
+<template>
+  <ScrollSectionProvider :offset="-80">
+    <Navigation />
+    <Content />
+  </ScrollSectionProvider>
+</template>
+
+<script setup>
+import { ScrollSectionProvider } from '@jump-section/vue';
+</script>
+```
+
+## `provideScrollManager(options?: ScrollOptions)`
+
+If you prefer using the Composition API directly in your parent component.
+
+```ts
+import { provideScrollManager } from '@jump-section/vue';
+
+provideScrollManager({ offset: -80 });
+```
+
+## `useScrollSection(sectionId?: string)`
+
+Composition function to interact with the scroll state.
+
+### Parameters
+
+- `sectionId?: string`: (Optional) The unique identifier for the section.
+
+### Returns
+
+When called **without a `sectionId`**:
+
+- `scrollTo: (id: string) => void`: Function to trigger scroll.
+- `activeId: Readonly<Ref<string | null>>`: Reactive reference to the active section ID.
+
+When called **with a `sectionId`**:
+
+- `registerRef: (el: any) => void`: Function to bind to the element's `:ref`.
+- `isActive: ComputedRef<boolean>`: Computed property showing if the section is active.
+- `scrollTo`: (Shared)
+- `activeId`: (Shared)
+
+### Examples
+
+#### Registering a Section
+
+```vue
+<template>
+  <section :ref="registerRef" :class="{ active: isActive }">
+    <h2>Section</h2>
+  </section>
+</template>
+
+<script setup>
+import { useScrollSection } from '@jump-section/vue';
+const { registerRef, isActive } = useScrollSection('section-1');
+</script>
+```

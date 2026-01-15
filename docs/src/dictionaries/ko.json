@@ -1,0 +1,14 @@
+{
+  "navbar": {
+    "docs": "문서",
+    "examples": "예제"
+  },
+  "hero": {
+    "new_badge": "새로운 소식: jump-section v1.0 출시",
+    "title_1": "부드러운",
+    "title_2": "섹션 이동을 만드세요.",
+    "description": "React, Vue, Core JS에서 부드러운 스크롤과 섹션 인식을 지원하는 초경량 고성능 라이브러리입니다.",
+    "get_started": "시작하기",
+    "github_repo": "GitHub 저장소"
+  }
+}

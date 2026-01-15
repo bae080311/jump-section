@@ -1,0 +1,56 @@
+# Quick Start
+
+Get up and running with Jump Section in three simple steps using the React wrapper.
+
+## 1. Wrap your app
+
+Wrap your application with the `ScrollSectionProvider` to enable scroll management.
+
+```tsx
+import { ScrollSectionProvider } from '@jump-section/react';
+
+function App() {
+  return <ScrollSectionProvider offset={-80}>{/* Your content */}</ScrollSectionProvider>;
+}
+```
+
+## 2. Register your sections
+
+Use the `useScrollSection` hook to register section elements.
+
+```tsx
+import { useScrollSection } from '@jump-section/react';
+
+function Content() {
+  const section1 = useScrollSection('section-1');
+
+  return (
+    <section ref={section1.registerRef}>
+      <h2>Section 1</h2>
+    </section>
+  );
+}
+```
+
+## 3. Navigation
+
+Use the `scrollTo` function and `activeId` state to build your navigation.
+
+```tsx
+import { useScrollSection } from '@jump-section/react';
+
+function Nav() {
+  const { scrollTo, activeId } = useScrollSection();
+
+  return (
+    <nav>
+      <button
+        onClick={() => scrollTo('section-1')}
+        className={activeId === 'section-1' ? 'active' : ''}
+      >
+        Go to Section 1
+      </button>
+    </nav>
+  );
+}
+```
