@@ -1,0 +1,67 @@
+# React API
+
+`@jump-section/react` 패키지는 Jump Section Core 로직을 감싸는 Context-aware 래퍼를 제공합니다.
+
+## `ScrollSectionProvider`
+
+애플리케이션이나 특정 스크롤 영역을 감싸야 하는 Provider 컴포넌트입니다.
+
+### Props
+
+- `offset?: number`: 스크롤 위치의 수직 오프셋 (기본값: `0`).
+- `behavior?: 'smooth' | 'auto'`: 스크롤 동작 (기본값: `'smooth'`).
+- `children: ReactNode`: 애플리케이션 컴포넌트.
+
+```tsx
+<ScrollSectionProvider offset={-100} behavior="smooth">
+  <App />
+</ScrollSectionProvider>
+```
+
+## `useScrollSection(sectionId?: string)`
+
+스크롤 매니저와 상호작용하기 위한 주요 Hook입니다.
+
+### Parameters
+
+- `sectionId?: string`: (선택) 섹션의 고유 식별자.
+
+### Returns
+
+**`sectionId` 없이** 호출할 경우 (Global state):
+
+- `scrollTo: (id: string) => void`: 특정 섹션으로 스크롤하는 함수.
+- `activeId: string | null`: 현재 활성화된 섹션의 ID.
+
+**`sectionId`와 함께** 호출할 경우 (Section registration):
+
+- `registerRef: (element: HTMLElement | null) => void`: 섹션 엘리먼트에 연결할 Ref 콜백.
+- `isActive: boolean`: 이 특정 섹션이 현재 활성화되어 있는지 여부.
+- `scrollTo: (id: string) => void`: 공유된 스크롤 함수.
+- `activeId: string | null`: 공유된 활성화 ID 상태.
+
+### Examples
+
+#### 섹션 등록하기 (Registering a Section)
+
+```tsx
+const { registerRef, isActive } = useScrollSection('my-section');
+
+return (
+  <section ref={registerRef} className={isActive ? 'bg-blue-100' : ''}>
+    <h2>My Section</h2>
+  </section>
+);
+```
+
+#### 내비게이션 링크 만들기 (Creating a Navigation Link)
+
+```tsx
+const { scrollTo, activeId } = useScrollSection();
+
+return (
+  <button onClick={() => scrollTo('my-section')}>
+    {activeId === 'my-section' ? '현재 위치' : '섹션으로 이동'}
+  </button>
+);
+```

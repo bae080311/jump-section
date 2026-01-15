@@ -1,0 +1,67 @@
+# React API
+
+The `@jump-section/react` package provides a context-aware wrapper around the core Jump Section logic.
+
+## `ScrollSectionProvider`
+
+The provider component that should wrap your application or a specific scrollable area.
+
+### Props
+
+- `offset?: number`: Vertical offset for scroll position (default: `0`).
+- `behavior?: 'smooth' | 'auto'`: The scroll behavior (default: `'smooth'`).
+- `children: ReactNode`: Your application components.
+
+```tsx
+<ScrollSectionProvider offset={-100} behavior="smooth">
+  <App />
+</ScrollSectionProvider>
+```
+
+## `useScrollSection(sectionId?: string)`
+
+The primary hook for interacting with the scroll manager.
+
+### Parameters
+
+- `sectionId?: string`: (Optional) The unique identifier for the section.
+
+### Returns
+
+When called **without a `sectionId`** (Global state):
+
+- `scrollTo: (id: string) => void`: Function to trigger scroll to a specific section.
+- `activeId: string | null`: The ID of the currently active section.
+
+When called **with a `sectionId`** (Section registration):
+
+- `registerRef: (element: HTMLElement | null) => void`: Ref callback to attach to the section element.
+- `isActive: boolean`: Whether this specific section is currently active.
+- `scrollTo: (id: string) => void`: Shared scroll function.
+- `activeId: string | null`: Shared active ID state.
+
+### Examples
+
+#### Registering a Section
+
+```tsx
+const { registerRef, isActive } = useScrollSection('my-section');
+
+return (
+  <section ref={registerRef} className={isActive ? 'bg-blue-100' : ''}>
+    <h2>My Section</h2>
+  </section>
+);
+```
+
+#### Creating a Navigation Link
+
+```tsx
+const { scrollTo, activeId } = useScrollSection();
+
+return (
+  <button onClick={() => scrollTo('my-section')}>
+    {activeId === 'my-section' ? 'You are here' : 'Jump to Section'}
+  </button>
+);
+```
