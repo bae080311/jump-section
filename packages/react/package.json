@@ -22,7 +22,8 @@
   "types": "dist/index.d.ts",
   "sideEffects": false,
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "dependencies": {
     "@jump-section/core": "workspace:*"

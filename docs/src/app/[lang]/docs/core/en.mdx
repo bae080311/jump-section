@@ -1,0 +1,41 @@
+# Core API
+
+The `@jump-section/core` package contains the framework-agnostic logic for section tracking and smooth scrolling.
+
+## `ScrollManager`
+
+The main class that orchestrates section detection and scrolling.
+
+### Constructor
+
+```ts
+const manager = new ScrollManager({
+  offset: -80,
+  behavior: 'smooth',
+});
+```
+
+### Methods
+
+- `registerSection(id: string, element: HTMLElement)`: Register a new section to be tracked.
+- `unregisterSection(id: string)`: Stop tracking a section.
+- `scrollTo(id: string)`: Programmatically scroll to a registered section.
+- `onActiveChange(callback: (id: string | null) => void)`: Subscribe to active section changes.
+- `destroy()`: Clean up observers and listeners.
+
+### Basic Usage
+
+```ts
+import { ScrollManager } from '@jump-section/core';
+
+const manager = new ScrollManager();
+
+const el = document.getElementById('my-section');
+manager.registerSection('home', el);
+
+manager.onActiveChange((id) => {
+  console.log('Current active section:', id);
+});
+
+manager.scrollTo('home');
+```
