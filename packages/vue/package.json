@@ -1,6 +1,6 @@
 {
   "name": "@jump-section/vue",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Vue composables for jump-section scroll management",
   "keywords": [
     "scroll",
