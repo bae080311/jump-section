@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useScrollManager } from './ScrollSectionContext';
 
 export const useScrollSection = (sectionId?: string) => {

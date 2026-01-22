@@ -42,7 +42,7 @@
     "@jump-section/core": "^1.0.1"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && node scripts/post-build.js",
     "test": "vitest run --environment jsdom"
   },
   "peerDependencies": {

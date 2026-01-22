@@ -1,5 +1,12 @@
-import { createContext, useContext, useEffect, useRef, type ReactNode, type FC } from 'react';
-import { ScrollManager, ScrollOptions } from '@jump-section/core';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useRef,
+  type ReactNode,
+  type FC,
+} from 'react';
+import { ScrollManager } from '@jump-section/core';
 
 const ScrollSectionContext = createContext<ScrollManager | null>(null);
 
