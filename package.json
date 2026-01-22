@@ -24,7 +24,8 @@
     "check-exports": "turbo check-exports",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md}\"",
-    "prepare": "husky"
+    "prepare": "husky",
+    "version:bump": "node scripts/bump-version.js"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
