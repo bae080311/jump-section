@@ -9,4 +9,5 @@ export default defineConfig({
   target: 'es2015',
   treeshake: true,
   splitting: false,
+  external: ['react', 'react-dom', 'react/jsx-runtime'],
 });
