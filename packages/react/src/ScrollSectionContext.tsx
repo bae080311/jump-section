@@ -1,15 +1,15 @@
-import React, { createContext, useContext, useEffect, useRef } from 'react';
+import { createContext, useContext, useEffect, useRef, type ReactNode, type FC } from 'react';
 import { ScrollManager, ScrollOptions } from '@jump-section/core';
 
 const ScrollSectionContext = createContext<ScrollManager | null>(null);
 
 interface ScrollSectionProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
   offset?: number;
   behavior?: ScrollBehavior;
 }
 
-export const ScrollSectionProvider: React.FC<ScrollSectionProviderProps> = ({
+export const ScrollSectionProvider: FC<ScrollSectionProviderProps> = ({
   children,
   offset,
   behavior,
