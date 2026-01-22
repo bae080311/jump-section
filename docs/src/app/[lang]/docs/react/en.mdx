@@ -65,3 +65,28 @@ return (
   </button>
 );
 ```
+
+## `Section`
+
+A wrapper component that abstracts away the manual ref registration of `useScrollSection`.
+
+### Props
+
+- `id: string`: (Required) The unique identifier for the section.
+- `as?: ElementType`: (Optional) The HTML tag or component to render (default: `'section'`).
+- Other HTML attributes (`className`, `style`, etc.)
+
+### Example
+
+```tsx
+import { Section } from '@jump-section/react';
+
+<Section id="section-1" className="p-10">
+  <h1>Section 1</h1>
+</Section>
+
+// Render as a different tag
+<Section id="section-2" as="div">
+  <h1>Section 2 (Div)</h1>
+</Section>
+```
