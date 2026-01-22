@@ -73,7 +73,11 @@ export class ScrollManager {
   public scrollTo(id: string) {
     const element = this.sections.get(id);
     if (!element) {
-      console.warn(`[ScrollManager] Section with id "${id}" not found.`);
+      console.warn(
+        `[ScrollManager] Section with id "${id}" not found. Available sections: ${Array.from(
+          this.sections.keys(),
+        ).join(', ')}`,
+      );
       return;
     }
 
