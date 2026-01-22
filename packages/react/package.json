@@ -1,6 +1,6 @@
 {
   "name": "@jump-section/react",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "React hooks for jump-section scroll management",
   "keywords": [
     "scroll",
