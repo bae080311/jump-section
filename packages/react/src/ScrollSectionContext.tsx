@@ -1,8 +1,10 @@
+'use client';
+
 import React, {
   createContext,
   useContext,
   useEffect,
-  useRef,
+  useState,
   type ReactNode,
   type FC,
 } from 'react';
@@ -21,23 +23,15 @@ export const ScrollSectionProvider: FC<ScrollSectionProviderProps> = ({
   offset,
   behavior,
 }) => {
-  const managerRef = useRef<ScrollManager | null>(null);
-
-  if (!managerRef.current) {
-    managerRef.current = new ScrollManager({ offset, behavior });
-  }
+  const [manager] = useState<ScrollManager>(() => new ScrollManager({ offset, behavior }));
 
   useEffect(() => {
     return () => {
-      managerRef.current?.destroy();
+      manager.destroy();
     };
-  }, []);
+  }, [manager]);
 
-  return (
-    <ScrollSectionContext.Provider value={managerRef.current}>
-      {children}
-    </ScrollSectionContext.Provider>
-  );
+  return <ScrollSectionContext.Provider value={manager}>{children}</ScrollSectionContext.Provider>;
 };
 
 export const useScrollManager = (): ScrollManager => {
