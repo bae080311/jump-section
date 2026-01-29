@@ -132,8 +132,8 @@ importers:
   packages/react:
     dependencies:
       '@jump-section/core':
-        specifier: workspace:*
-        version: link:../core
+        specifier: ^1.0.1
+        version: 1.0.1
       react:
         specifier: '>=16.8.0'
         version: 19.2.3
@@ -144,8 +144,8 @@ importers:
   packages/vue:
     dependencies:
       '@jump-section/core':
-        specifier: workspace:*
-        version: link:../core
+        specifier: ^1.0.1
+        version: 1.0.1
       vue:
         specifier: ^3.0.0
         version: 3.5.26(typescript@5.9.3)
@@ -681,6 +681,9 @@ packages:
 
   '@jridgewell/trace-mapping@0.3.31':
     resolution: {integrity: sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw==}
+
+  '@jump-section/core@1.0.1':
+    resolution: {integrity: sha512-CGMHfeyywTIQSHZnnC3/GEbleXB1xKBb7TilpESvT1RxpxumxpLnOwvL0jzT4986pPV1LEiFlgODn2iyRXWTHA==}
 
   '@loaderkit/resolve@1.0.4':
     resolution: {integrity: sha512-rJzYKVcV4dxJv+vW6jlvagF8zvGxHJ2+HTr1e2qOejfmGhAApgJHl8Aog4mMszxceTRiKTTbnpgmTO1bEZHV/A==}
@@ -3969,6 +3972,8 @@ snapshots:
     dependencies:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
+
+  '@jump-section/core@1.0.1': {}
 
   '@loaderkit/resolve@1.0.4':
     dependencies:

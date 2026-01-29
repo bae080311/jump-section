@@ -65,3 +65,28 @@ return (
   </button>
 );
 ```
+
+## `Section`
+
+`useScrollSection`을 사용하여 직접 ref를 등록하는 대신 사용할 수 있는 래퍼 컴포넌트입니다.
+
+### Props
+
+- `id: string`: (필수) 섹션의 고유 식별자.
+- `as?: ElementType`: (선택) 렌더링할 HTML 태그 또는 컴포넌트 (기본값: `'section'`).
+- 그 외 HTML 속성 (`className`, `style`, etc.)
+
+### Example
+
+```tsx
+import { Section } from '@jump-section/react';
+
+<Section id="section-1" className="p-10">
+  <h1>Section 1</h1>
+</Section>
+
+// 다른 태그로 렌더링
+<Section id="section-2" as="div">
+  <h1>Section 2 (Div)</h1>
+</Section>
+```

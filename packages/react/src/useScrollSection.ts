@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import { useScrollManager } from './ScrollSectionContext';
 
 export const useScrollSection = (sectionId?: string) => {
@@ -14,13 +16,16 @@ export const useScrollSection = (sectionId?: string) => {
     };
   }, [manager]);
 
-  const registerRef = (element: HTMLElement | null) => {
-    if (sectionId && element) {
-      manager.registerSection(sectionId, element);
-    } else if (sectionId && !element) {
-      manager.unregisterSection(sectionId);
-    }
-  };
+  const registerRef = React.useCallback(
+    (element: HTMLElement | null) => {
+      if (sectionId && element) {
+        manager.registerSection(sectionId, element);
+      } else if (sectionId && !element) {
+        manager.unregisterSection(sectionId);
+      }
+    },
+    [sectionId, manager],
+  );
 
   return {
     registerRef,

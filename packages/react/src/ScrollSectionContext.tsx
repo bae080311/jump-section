@@ -1,36 +1,37 @@
-import React, { createContext, useContext, useEffect, useRef } from 'react';
-import { ScrollManager, ScrollOptions } from '@jump-section/core';
+'use client';
+
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+  type FC,
+} from 'react';
+import { ScrollManager } from '@jump-section/core';
 
 const ScrollSectionContext = createContext<ScrollManager | null>(null);
 
 interface ScrollSectionProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
   offset?: number;
   behavior?: ScrollBehavior;
 }
 
-export const ScrollSectionProvider: React.FC<ScrollSectionProviderProps> = ({
+export const ScrollSectionProvider: FC<ScrollSectionProviderProps> = ({
   children,
   offset,
   behavior,
 }) => {
-  const managerRef = useRef<ScrollManager | null>(null);
-
-  if (!managerRef.current) {
-    managerRef.current = new ScrollManager({ offset, behavior });
-  }
+  const [manager] = useState<ScrollManager>(() => new ScrollManager({ offset, behavior }));
 
   useEffect(() => {
     return () => {
-      managerRef.current?.destroy();
+      manager.destroy();
     };
-  }, []);
+  }, [manager]);
 
-  return (
-    <ScrollSectionContext.Provider value={managerRef.current}>
-      {children}
-    </ScrollSectionContext.Provider>
-  );
+  return <ScrollSectionContext.Provider value={manager}>{children}</ScrollSectionContext.Provider>;
 };
 
 export const useScrollManager = (): ScrollManager => {

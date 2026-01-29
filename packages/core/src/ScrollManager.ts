@@ -47,6 +47,7 @@ export class ScrollManager {
   };
 
   public registerSection(id: string, element: HTMLElement) {
+    if (typeof window === 'undefined') return;
     if (!element) return;
     this.sections.set(id, element);
     if (!this.observer) {
@@ -71,9 +72,15 @@ export class ScrollManager {
   }
 
   public scrollTo(id: string) {
+    if (typeof window === 'undefined') return;
+
     const element = this.sections.get(id);
     if (!element) {
-      console.warn(`[ScrollManager] Section with id "${id}" not found.`);
+      console.warn(
+        `[ScrollManager] Section with id "${id}" not found. Available sections: ${Array.from(
+          this.sections.keys(),
+        ).join(', ')}`,
+      );
       return;
     }
 

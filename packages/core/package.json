@@ -1,6 +1,6 @@
 {
   "name": "@jump-section/core",
-  "version": "1.0.0",
+  "version": "1.0.9",
   "description": "Core scroll management library for jump-section",
   "keywords": [
     "scroll",
@@ -18,6 +18,13 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
   "sideEffects": false,
   "files": [
     "dist",

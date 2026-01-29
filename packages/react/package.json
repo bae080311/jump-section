@@ -1,6 +1,6 @@
 {
   "name": "@jump-section/react",
-  "version": "1.0.0",
+  "version": "1.0.9",
   "description": "React hooks for jump-section scroll management",
   "keywords": [
     "scroll",
@@ -20,16 +20,29 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
   "sideEffects": false,
   "files": [
     "dist",
     "README.md"
   ],
   "dependencies": {
-    "@jump-section/core": "workspace:*"
+    "@jump-section/core": "^1.0.1"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "tsup && node scripts/post-build.js",
     "test": "vitest run --environment jsdom"
   },
   "peerDependencies": {
