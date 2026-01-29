@@ -1,3 +1,5 @@
+'use client';
+
 import React, { type ElementType, forwardRef } from 'react';
 import { useScrollSection } from './useScrollSection';
 
