@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     creator: '@k_jin_0',
   },
   verification: {
-    google: 'gNu5B8s3pquBu11l2VcYBrKXWGHorWDeYPt2Q6yFfrA',
+    google: 'gHhBwfHWdKD_7JX44AncUnNtxSw9VZQac-Ry6tuhaiE',
   },
 };
 
