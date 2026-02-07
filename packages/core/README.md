@@ -1,5 +1,9 @@
 # @jump-section/core
 
+<div align="center">
+  <img src="https://raw.githubusercontent.com/bae080311/jump-section/main/docs/public/logo.png" alt="Jump Section Logo" width="200" />
+</div>
+
 Core scroll management library for jump-section. Framework-agnostic scroll navigation with intersection observer.
 
 ## Installation

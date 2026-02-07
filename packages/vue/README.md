@@ -1,5 +1,9 @@
 # @jump-section/vue
 
+<div align="center">
+  <img src="https://raw.githubusercontent.com/bae080311/jump-section/main/docs/public/logo.png" alt="Jump Section Logo" width="200" />
+</div>
+
 Vue composables for jump-section scroll management. Easily add scroll-to-section navigation to your Vue 3 applications.
 
 ## Installation

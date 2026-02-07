@@ -1,5 +1,9 @@
 # 🚀 jump-section
 
+<div align="center">
+  <img src="docs/public/logo.png" alt="Jump Section Logo" width="200" />
+</div>
+
 메뉴 클릭 시 해당하는 섹션으로 부드럽게 이동하고, 스크롤 위치에 따라 활성 섹션을 자동으로 추적하는 크로스 프레임워크 라이브러리입니다.
 
 [![License: ISC](https://img.shields.io/badge/License-ISC-blue.svg)](https://opensource.org/licenses/ISC)

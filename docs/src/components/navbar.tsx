@@ -54,7 +54,7 @@ export function Navbar({ dict, lang }: NavbarProps) {
             {dict.docs}
           </Link>
           <Link
-            href={`/${lang}/examples`}
+            href={`/${lang}/docs/example`}
             className="text-sm font-medium hover:text-primary/80 transition-colors"
           >
             {dict.examples}
