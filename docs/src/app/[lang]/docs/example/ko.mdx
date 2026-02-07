@@ -56,6 +56,32 @@ function Content() {
 }
 ```
 
+### Section 컴포넌트 사용
+
+`Section`을 쓰면 ref 등록 없이 더 간단하게 쓸 수 있습니다.
+
+```tsx
+import { ScrollSectionProvider, Section, useScrollSection } from '@jump-section/react';
+
+function App() {
+  return (
+    <ScrollSectionProvider offset={-80} behavior="smooth">
+      <Navigation />
+      <main>
+        <Section id="section-1">
+          <h2>Section 1</h2>
+          <p>Content here...</p>
+        </Section>
+        <Section id="section-2">
+          <h2>Section 2</h2>
+          <p>Content here...</p>
+        </Section>
+      </main>
+    </ScrollSectionProvider>
+  );
+}
+```
+
 ## Vue 3
 
 ```vue

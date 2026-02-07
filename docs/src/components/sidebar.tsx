@@ -19,7 +19,6 @@ const getItems = (lang: Locale) => [
     title: 'API Reference',
     links: [
       { name: 'React API', href: `/${lang}/docs/react` },
-      { name: 'Section', href: `/${lang}/docs/section` },
       { name: 'Vue API', href: `/${lang}/docs/vue` },
       { name: 'Core API', href: `/${lang}/docs/core` },
     ],

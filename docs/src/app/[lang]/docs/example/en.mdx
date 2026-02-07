@@ -56,6 +56,32 @@ function Content() {
 }
 ```
 
+### Using the Section component
+
+You can use `Section` for a simpler setup without manual ref registration.
+
+```tsx
+import { ScrollSectionProvider, Section, useScrollSection } from '@jump-section/react';
+
+function App() {
+  return (
+    <ScrollSectionProvider offset={-80} behavior="smooth">
+      <Navigation />
+      <main>
+        <Section id="section-1">
+          <h2>Section 1</h2>
+          <p>Content here...</p>
+        </Section>
+        <Section id="section-2">
+          <h2>Section 2</h2>
+          <p>Content here...</p>
+        </Section>
+      </main>
+    </ScrollSectionProvider>
+  );
+}
+```
+
 ## Vue 3
 
 ```vue

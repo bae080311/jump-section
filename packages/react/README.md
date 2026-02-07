@@ -72,6 +72,34 @@ function Content() {
 }
 ```
 
+### Using the `Section` component
+
+You can use the `Section` component instead of manually calling `useScrollSection(id)` and attaching a ref:
+
+```tsx
+import { ScrollSectionProvider, Section, useScrollSection } from '@jump-section/react';
+
+function App() {
+  return (
+    <ScrollSectionProvider offset={-80} behavior="smooth">
+      <Navigation />
+      <main>
+        <Section id="section-1">
+          <h2>Section 1</h2>
+          <p>Content for section 1...</p>
+        </Section>
+        <Section id="section-2">
+          <h2>Section 2</h2>
+          <p>Content for section 2...</p>
+        </Section>
+      </main>
+    </ScrollSectionProvider>
+  );
+}
+```
+
+**Section props:** `id` (required), `as?: ElementType` (default: `'section'`), plus any HTML attributes.
+
 ### With Active State
 
 ```tsx
@@ -113,6 +141,16 @@ Hook for managing scroll sections.
 - `scrollTo: (id: string) => void` - Function to scroll to a specific section
 - `activeId: string | null` - Currently active section ID
 - `isActive: boolean` - Whether this section is currently active (only if sectionId provided)
+
+### `Section`
+
+Wrapper component that registers a scroll section without manually using `useScrollSection` and a ref.
+
+**Props:**
+
+- `id: string` - (Required) Unique section ID used for `scrollTo(id)` and active detection
+- `as?: ElementType` - (Optional) HTML tag or component to render (default: `'section'`)
+- Other HTML attributes (`className`, `style`, etc.) are forwarded to the root element
 
 ### `useScrollManager()`
 
