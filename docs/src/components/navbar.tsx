@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { Github, Languages } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -32,7 +33,17 @@ export function Navbar({ dict, lang }: NavbarProps) {
       className={cn('fixed top-0 left-0 right-0 z-50 flex justify-center p-4')}
     >
       <nav className="glass rounded-full px-6 py-2 flex items-center gap-8 max-w-4xl w-full justify-between backdrop-blur-md">
-        <Link href={`/${lang}`} className="text-xl font-bold tracking-tighter text-glow">
+        <Link
+          href={`/${lang}`}
+          className="text-xl font-bold tracking-tighter text-glow flex items-center gap-2"
+        >
+          <Image
+            src="/logo.png"
+            alt="Jump Section Logo"
+            width={32}
+            height={32}
+            className="w-8 h-8"
+          />
           jump-section
         </Link>
         <div className="flex items-center gap-6">

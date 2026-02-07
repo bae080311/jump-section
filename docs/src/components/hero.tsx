@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { ArrowRight, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { type Locale } from '@/i18n-config';
 
 interface HeroProps {
@@ -34,9 +35,21 @@ export function Hero({ dict, lang }: HeroProps) {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2, duration: 0.5 }}
-          className="inline-block glass px-4 py-1.5 rounded-full text-xs font-medium mb-8 border-white/20"
+          className="flex flex-col items-center gap-8 mb-8"
         >
-          <span className="opacity-70">{dict.new_badge}</span>
+          <div className="relative w-32 h-32 md:w-40 md:h-40">
+            <div className="absolute inset-0 bg-primary/20 blur-2xl rounded-full" />
+            <Image
+              src="/logo.png"
+              alt="Jump Section Logo"
+              fill
+              className="object-contain drop-shadow-2xl relative z-10"
+              priority
+            />
+          </div>
+          <div className="inline-block glass px-4 py-1.5 rounded-full text-xs font-medium border-white/20">
+            <span className="opacity-70">{dict.new_badge}</span>
+          </div>
         </motion.div>
 
         <h1 className="text-6xl md:text-8xl font-bold tracking-tight mb-6 bg-linear-to-b from-white to-white/40 bg-clip-text text-transparent">
