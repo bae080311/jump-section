@@ -12,6 +12,7 @@ const getItems = (lang: Locale) => [
       { name: 'Introduction', href: `/${lang}/docs` },
       { name: 'Installation', href: `/${lang}/docs/installation` },
       { name: 'Quick Start', href: `/${lang}/docs/quick-start` },
+      { name: 'Example', href: `/${lang}/docs/example` },
     ],
   },
   {
