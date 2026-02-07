@@ -16,9 +16,44 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'jump-section | Smooth Section Navigation',
+  metadataBase: new URL('https://jump-section.vercel.app'),
+  title: {
+    default: 'jump-section | Smooth Section Navigation',
+    template: '%s | jump-section',
+  },
   description:
     'A lightweight, high-performance library for smooth scrolling and section-aware navigation in React, Vue, and Core JS.',
+  keywords: [
+    'scroll',
+    'navigation',
+    'react',
+    'vue',
+    'javascript',
+    'intersection observer',
+    'smooth scroll',
+    'toc',
+  ],
+  authors: [{ name: 'k_jin.0', url: 'https://github.com/bae080311' }],
+  creator: 'k_jin.0',
+  openGraph: {
+    title: 'jump-section | Smooth Section Navigation',
+    description:
+      'A lightweight, high-performance library for smooth scrolling and section-aware navigation in React, Vue, and Core JS.',
+    url: 'https://jump-section.vercel.app',
+    siteName: 'jump-section',
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'jump-section | Smooth Section Navigation',
+    description:
+      'A lightweight, high-performance library for smooth scrolling and section-aware navigation in React, Vue, and Core JS.',
+    creator: '@k_jin_0',
+  },
+  verification: {
+    google: 'gNu5B8s3pquBu11l2VcYBrKXWGHorWDeYPt2Q6yFfrA',
+  },
 };
 
 export async function generateStaticParams() {
