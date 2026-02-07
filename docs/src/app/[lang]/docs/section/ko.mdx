@@ -1,0 +1,65 @@
+# Section
+
+`Section` 컴포넌트는 `useScrollSection`으로 ref를 직접 붙이지 않고도 스크롤 섹션을 등록하는 래퍼입니다. React에서 섹션을 정의할 때 권장하는 방식입니다.
+
+## 언제 사용할까
+
+- **Section**: ref 없이 선언적으로 블록을 섹션으로 만들고 싶을 때 사용합니다.
+- **useScrollSection(id)**: 커스텀 엘리먼트(서드파티 컴포넌트 등)를 쓰거나, 같은 컴포넌트에서 `isActive`나 ref가 필요할 때 사용합니다.
+
+## Props
+
+| Prop | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `id` | `string` | 예 | 섹션의 고유 식별자 (`scrollTo(id)` 및 활성 섹션 감지에 사용). |
+| `as` | `ElementType` | 아니오 | 렌더링할 HTML 태그 또는 컴포넌트 (기본값: `'section'`). |
+| ... | `HTMLAttributes<HTMLElement>` | 아니오 | `className`, `style` 등 일반 HTML 속성. |
+
+## 예제
+
+### 기본 사용
+
+```tsx
+import { ScrollSectionProvider, Section } from '@jump-section/react';
+
+<ScrollSectionProvider>
+  <Section id="section-1" className="min-h-screen p-10">
+    <h1>Section 1</h1>
+  </Section>
+  <Section id="section-2" className="min-h-screen p-10">
+    <h1>Section 2</h1>
+  </Section>
+</ScrollSectionProvider>
+```
+
+### 다른 태그로 렌더링
+
+`as` prop으로 `div`, `article` 등 다른 엘리먼트로 렌더할 수 있습니다.
+
+```tsx
+<Section id="about" as="article" className="prose">
+  <h2>About</h2>
+  <p>...</p>
+</Section>
+
+<Section id="footer" as="footer">
+  <p>푸터 내용</p>
+</Section>
+```
+
+### ref와 함께 사용
+
+`Section`은 내부 DOM 엘리먼트로 ref를 전달하므로, 필요하면 자체 ref를 붙일 수 있습니다.
+
+```tsx
+const sectionRef = useRef<HTMLElement>(null);
+
+<Section ref={sectionRef} id="contact">
+  연락처 섹션
+</Section>
+```
+
+## 관련 문서
+
+- [React API](/docs/react) — `ScrollSectionProvider`, `useScrollSection` 및 전체 API.
+- [Quick Start](/docs/quick-start) — 앱에서 Jump Section 설정하기.
