@@ -1,0 +1,65 @@
+# Section
+
+The `Section` component is a wrapper that registers a scroll section with the scroll manager without manually using `useScrollSection` and attaching a ref. It is the recommended way to define sections in React.
+
+## When to use
+
+- Use **Section** when you want a simple declarative way to mark a block as a section (no ref wiring).
+- Use **useScrollSection(id)** when you need to render a custom element (e.g. a third-party component) or need `isActive` / ref in the same component.
+
+## Props
+
+| Prop | Type | Required | Description |
+|------|------|----------|-------------|
+| `id` | `string` | Yes | Unique identifier for the section (used by `scrollTo(id)` and for active detection). |
+| `as` | `ElementType` | No | HTML tag or component to render (default: `'section'`). |
+| ... | `HTMLAttributes<HTMLElement>` | No | Any standard HTML attributes (`className`, `style`, etc.). |
+
+## Examples
+
+### Basic usage
+
+```tsx
+import { ScrollSectionProvider, Section } from '@jump-section/react';
+
+<ScrollSectionProvider>
+  <Section id="section-1" className="min-h-screen p-10">
+    <h1>Section 1</h1>
+  </Section>
+  <Section id="section-2" className="min-h-screen p-10">
+    <h1>Section 2</h1>
+  </Section>
+</ScrollSectionProvider>
+```
+
+### Render as a different tag
+
+You can render as `div`, `article`, or any other element via the `as` prop.
+
+```tsx
+<Section id="about" as="article" className="prose">
+  <h2>About</h2>
+  <p>...</p>
+</Section>
+
+<Section id="footer" as="footer">
+  <p>Footer content</p>
+</Section>
+```
+
+### With ref
+
+`Section` forwards a ref to the underlying DOM element, so you can still attach your own ref if needed.
+
+```tsx
+const sectionRef = useRef<HTMLElement>(null);
+
+<Section ref={sectionRef} id="contact">
+  Contact section
+</Section>
+```
+
+## Related
+
+- [React API](/docs/react) — `ScrollSectionProvider`, `useScrollSection`, and full API.
+- [Quick Start](/docs/quick-start) — Set up Jump Section in your app.
