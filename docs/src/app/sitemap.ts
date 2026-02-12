@@ -10,7 +10,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '/docs/installation',
     '/docs/quick-start',
     '/docs/example',
-    '/docs/context',
+    '/docs/section',
     '/docs/react',
     '/docs/vue',
     '/docs/core',

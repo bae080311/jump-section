@@ -32,9 +32,17 @@ export const metadata: Metadata = {
     'intersection observer',
     'smooth scroll',
     'toc',
+    'nextjs',
   ],
   authors: [{ name: 'k_jin.0', url: 'https://github.com/bae080311' }],
   creator: 'k_jin.0',
+  alternates: {
+    canonical: '/',
+    languages: {
+      en: '/en',
+      ko: '/ko',
+    },
+  },
   openGraph: {
     title: 'jump-section | Smooth Section Navigation',
     description:
@@ -43,6 +51,14 @@ export const metadata: Metadata = {
     siteName: 'jump-section',
     locale: 'en_US',
     type: 'website',
+    images: [
+      {
+        url: '/logo.png',
+        width: 1200,
+        height: 630,
+        alt: 'jump-section logo',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
@@ -50,6 +66,7 @@ export const metadata: Metadata = {
     description:
       'A lightweight, high-performance library for smooth scrolling and section-aware navigation in React, Vue, and Core JS.',
     creator: '@k_jin_0',
+    images: ['/logo.png'],
   },
   verification: {
     google: 'gHhBwfHWdKD_7JX44AncUnNtxSw9VZQac-Ry6tuhaiE',
