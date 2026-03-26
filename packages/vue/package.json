@@ -33,7 +33,7 @@
     "README.md"
   ],
   "dependencies": {
-    "@jump-section/core": "^1.0.1"
+    "@jump-section/core": "workspace:*"
   },
   "scripts": {
     "build": "tsup",

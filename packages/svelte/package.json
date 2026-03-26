@@ -1,0 +1,43 @@
+{
+  "name": "@jump-section/svelte",
+  "version": "1.0.18",
+  "description": "jump-section adapter for Svelte 5",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.mts",
+        "default": "./dist/index.mjs"
+      },
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "sideEffects": false,
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run --environment jsdom"
+  },
+  "dependencies": {
+    "@jump-section/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "svelte": "^4.0.0 || ^5.0.0"
+  },
+  "devDependencies": {
+    "svelte": "^5.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "license": "ISC",
+  "author": "k_jin.0"
+}

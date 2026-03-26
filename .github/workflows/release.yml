@@ -61,9 +61,10 @@ jobs:
           git commit -m "chore: update lockfile [skip ci]" || exit 0
           git push || exit 0
 
-      - name: Publish react and vue to npm
+      - name: Publish react, vue, and svelte to npm
         run: |
           cd packages/react && npm publish --access public
           cd ../vue && npm publish --access public
+          cd ../svelte && npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
