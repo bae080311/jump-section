@@ -1,6 +1,6 @@
 {
   "name": "@jump-section/svelte",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "description": "jump-section adapter for Svelte 5",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
@@ -18,7 +18,9 @@
     }
   },
   "sideEffects": false,
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "test": "vitest run --environment jsdom"
