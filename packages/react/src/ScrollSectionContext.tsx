@@ -8,22 +8,25 @@ import React, {
   type ReactNode,
   type FC,
 } from 'react';
-import { ScrollManager } from '@jump-section/core';
+import { ScrollManager, type ScrollOptions } from '@jump-section/core';
 
 const ScrollSectionContext = createContext<ScrollManager | null>(null);
 
-interface ScrollSectionProviderProps {
+interface ScrollSectionProviderProps extends ScrollOptions {
   children: ReactNode;
-  offset?: number;
-  behavior?: ScrollBehavior;
 }
 
 export const ScrollSectionProvider: FC<ScrollSectionProviderProps> = ({
   children,
   offset,
   behavior,
+  hash,
+  root,
+  keyboard,
 }) => {
-  const [manager] = useState<ScrollManager>(() => new ScrollManager({ offset, behavior }));
+  const [manager] = useState<ScrollManager>(
+    () => new ScrollManager({ offset, behavior, hash, root, keyboard }),
+  );
 
   useEffect(() => {
     return () => {

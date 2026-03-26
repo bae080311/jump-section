@@ -26,7 +26,7 @@ function updatePackageVersion(packagePath, newVersion) {
 }
 
 // 패키지 디렉토리들
-const packages = ['core', 'react', 'vue'];
+const packages = ['core', 'react', 'vue', 'svelte'];
 const packagesDir = path.join(__dirname, '..', 'packages');
 
 // core 패키지의 현재 버전 확인
