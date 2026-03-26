@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { provideScrollManager, useScrollManager, useScrollSection, useScrollProgress } from './useScrollSection';
+import {
+  provideScrollManager,
+  useScrollManager,
+  useScrollSection,
+  useScrollProgress,
+} from './useScrollSection';
 
 describe('Svelte exports', () => {
   it('provideScrollManager is a function', () => {

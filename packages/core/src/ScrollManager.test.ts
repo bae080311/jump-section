@@ -111,10 +111,7 @@ describe('ScrollManager', () => {
     observerCallback([entry]);
 
     await Promise.resolve(); // queueMicrotask flush
-    expect(callback).toHaveBeenCalledWith(
-      'section-1',
-      expect.objectContaining({ previous: null }),
-    );
+    expect(callback).toHaveBeenCalledWith('section-1', expect.objectContaining({ previous: null }));
   });
 
   it('calls listener immediately with current state when subscribed', () => {
