@@ -488,7 +488,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const getResp = $input.item.json;\nconst fileData = $('파일 목록 분리').item.json;\nconst sha = getResp.sha || null;\n\nconst commitBody = {\n  message: fileData.commitMessage,\n  content: fileData.commitContent,\n  branch: fileData.commitBranch\n};\nif (sha) commitBody.sha = sha;\n\nreturn [{\n  json: {\n    filePath: fileData.filePath,\n    repoOwner: fileData.repoOwner,\n    repoName: fileData.repoName,\n    hasSha: !!sha,\n    commitBody\n  }\n}];"
+        "jsCode": "const getResp = $input.item.json;\nconst fileData = $('파일 목록 분리').item.json;\nconst sha = getResp.sha || null;\n\nreturn [{\n  json: {\n    filePath: fileData.filePath,\n    repoOwner: fileData.repoOwner,\n    repoName: fileData.repoName,\n    hasSha: !!sha,\n    commitMessage: fileData.commitMessage,\n    commitContent: fileData.commitContent,\n    commitBranch: fileData.commitBranch,\n    commitSha: sha || ''\n  }\n}];"
       },
       "id": "merge-sha",
       "name": "파일 SHA 병합",
@@ -496,6 +496,19 @@
       "typeVersion": 2,
       "position": [
         3100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.item.json;\nconst body = {\n  message: d.commitMessage,\n  content: d.commitContent,\n  branch: d.commitBranch\n};\nif (d.commitSha) body.sha = d.commitSha;\nreturn [{ json: { ...d, commitBodyStr: JSON.stringify(body) } }];"
+      },
+      "id": "prepare-commit-body",
+      "name": "커밋 바디 준비",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3210,
         300
       ]
     },
@@ -514,8 +527,8 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ $json.commitBody }}",
+        "specifyBody": "string",
+        "body": "={{ $json.commitBodyStr }}",
         "options": {}
       },
       "id": "commit-file-code",
@@ -781,6 +794,17 @@
       ]
     },
     "파일 SHA 병합": {
+      "main": [
+        [
+          {
+            "node": "커밋 바디 준비",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "커밋 바디 준비": {
       "main": [
         [
           {
