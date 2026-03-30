@@ -340,7 +340,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nreturn data.files.map(file => ({\n  json: {\n    filePath: file.path,\n    repoOwner: data.repoOwner,\n    repoName: data.repoName,\n    commitMessage: `feat: implement issue #${data.issueNumber} - ${file.description}`,\n    commitContent: Buffer.from(file.content).toString('base64'),\n    commitBranch: data.branchName\n  }\n}));"
+        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nreturn data.files.map(file => {\n  // 제어 문자 제거 (줄바꿈, 탭 등이 JSON을 깨뜨림)\n  const desc = (file.description || '').replace(/[\\x00-\\x1F\\x7F]/g, ' ').trim().slice(0, 72);\n  const content = (file.content || '').replace(/\\r/g, '\\n');\n  return {\n    json: {\n      filePath: (file.path || '').trim(),\n      repoOwner: data.repoOwner,\n      repoName: data.repoName,\n      commitMessage: `feat: implement issue #${data.issueNumber} - ${desc}`,\n      commitContent: Buffer.from(content).toString('base64'),\n      commitBranch: data.branchName\n    }\n  };\n});"
       },
       "id": "split-files",
       "name": "파일 목록 분리",
