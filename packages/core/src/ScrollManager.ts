@@ -7,6 +7,8 @@ export interface ScrollOptions {
   root?: HTMLElement | null;
   /** Alt+ArrowDown/Up 키보드 네비게이션을 활성화합니다 */
   keyboard?: boolean;
+  /** 스크롤 애니메이션에 사용할 커스텀 이징 함수 (0과 1 사이의 값을 반환하는 함수) */
+  easing?: (t: number) => number;
 }
 
 export interface ActiveChangeMeta {
@@ -35,6 +37,7 @@ export class ScrollManager {
   private scrollHandler: (() => void) | null = null;
   private popstateHandler: (() => void) | null = null;
   private notifyScheduled: boolean = false;
+  private scrollAnimationId: number | null = null;
 
   constructor(options: ScrollOptions = {}) {
     this.options = {
@@ -43,6 +46,7 @@ export class ScrollManager {
       hash: false,
       root: null,
       keyboard: false,
+      easing: (t) => t, // 기본 선형 이징
       ...options,
     };
     this.initObserver();
@@ -260,6 +264,30 @@ export class ScrollManager {
     return this.activeId;
   }
 
+  private notifyListeners() {
+    this.listeners.forEach((cb) =>
+      cb(this.activeId, {
+        previous: this.previousId,
+        direction: this.scrollDirection,
+      }),
+    );
+  }
+
+  /** 활성 섹션이 변경될 때 호출될 콜백을 등록합니다 */
+  public onActiveChange(callback: ActiveChangeCallback) {
+    this.listeners.add(callback);
+    return () => this.listeners.delete(callback);
+  }
+
+  /** 섹션의 스크롤 진행률이 변경될 때 호출될 콜백을 등록합니다 */
+  public onProgressChange(id: string, callback: ProgressCallback) {
+    if (!this.progressListeners.has(id)) {
+      this.progressListeners.set(id, new Set());
+    }
+    this.progressListeners.get(id)?.add(callback);
+    return () => this.progressListeners.get(id)?.delete(callback);
+  }
+
   /** 지정한 섹션으로 스크롤합니다. 스크롤 완료 시 resolve되는 Promise를 반환합니다 */
   public scrollTo(id: string): Promise<void> {
     if (typeof window === 'undefined') return Promise.resolve();
@@ -269,136 +297,131 @@ export class ScrollManager {
       console.warn(
         `[ScrollManager] Section with id "${id}" not found. Available sections: ${Array.from(this.sections.keys()).join(', ')}`,
       );
-      return Promise.resolve();
+      return Promise.reject(new Error(`Section with id "${id}" not found.`));
     }
 
-    const { offset, behavior } = this.options;
+    const targetScrollTop = this.getScrollTarget(element);
+    const startScrollTop = this.currentScrollTop;
+    const distance = targetScrollTop - startScrollTop;
+    const duration = 800; // milliseconds
 
-    if (this.options.root) {
-      const elementTop = element.offsetTop;
-      this.options.root.scrollTo({
-        top: elementTop + offset,
-        behavior,
-      });
-    } else {
-      const elementPosition = element.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({
-        top: elementPosition + offset,
-        behavior,
-      });
+    if (this.scrollAnimationId) {
+      cancelAnimationFrame(this.scrollAnimationId);
     }
 
-    return new Promise<void>((resolve) => {
-      if (behavior === 'auto' || behavior === 'instant') {
-        resolve();
-        return;
+    let startTime: number | null = null;
+
+    const animateScroll = (currentTime: number) => {
+      if (!startTime) startTime = currentTime;
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const easedProgress = this.options.easing(progress);
+
+      const newScrollTop = startScrollTop + distance * easedProgress;
+
+      if (this.options.root) {
+        this.options.root.scrollTop = newScrollTop;
+      } else {
+        window.scrollTo(0, newScrollTop);
       }
 
-      let lastScrollY = this.currentScrollTop;
-      let rafId: number;
+      if (progress < 1) {
+        this.scrollAnimationId = requestAnimationFrame(animateScroll);
+      } else {
+        this.scrollAnimationId = null;
+      }
+    };
 
-      const checkSettled = () => {
-        const current = this.currentScrollTop;
-        if (current === lastScrollY) {
-          cancelAnimationFrame(rafId);
-          resolve();
-          return;
-        }
-        lastScrollY = current;
-        rafId = requestAnimationFrame(checkSettled);
-      };
+    if (this.options.behavior === 'smooth') {
+      return new Promise((resolve) => {
+        const scrollEndCheck = () => {
+          if (Math.abs(this.currentScrollTop - targetScrollTop) < 1 || this.scrollAnimationId === null) {
+            this.scrollRoot.removeEventListener('scroll', scrollEndCheck as EventListener);
+            resolve();
+            return;
+          }
+          requestAnimationFrame(scrollEndCheck);
+        };
 
-      rafId = requestAnimationFrame(checkSettled);
+        this.scrollAnimationId = requestAnimationFrame(animateScroll);
+        this.scrollRoot.addEventListener('scroll', scrollEndCheck as EventListener);
+      });
+    } else {
+      // 'auto' 또는 기타 behavior
+      if (this.options.root) {
+        this.options.root.scrollTop = targetScrollTop;
+      } else {
+        window.scrollTo(0, targetScrollTop);
+      }
+      return Promise.resolve();
+    }
+  }
 
-      // 안전망: 1초 후 강제 resolve
-      setTimeout(() => {
-        cancelAnimationFrame(rafId);
-        resolve();
-      }, 1000);
-    });
+  private getScrollTarget(element: HTMLElement): number {
+    const elementRect = element.getBoundingClientRect();
+    const rootRect = this.options.root ? this.options.root.getBoundingClientRect() : { top: 0, left: 0 };
+
+    let targetScrollTop = elementRect.top - rootRect.top + this.currentScrollTop - this.options.offset;
+
+    // 스크롤 가능한 최대치 제한
+    let maxScrollTop = 0;
+    if (this.options.root) {
+      maxScrollTop = this.options.root.scrollHeight - this.options.root.clientHeight;
+    } else {
+      maxScrollTop = document.documentElement.scrollHeight - window.innerHeight;
+    }
+    return Math.min(targetScrollTop, maxScrollTop);
   }
 
   /** 다음 섹션으로 스크롤합니다 */
   public scrollToNext(): Promise<void> {
-    const ordered = this.getSections();
-    const currentIndex = this.activeId ? ordered.indexOf(this.activeId) : -1;
-    const nextId = ordered[currentIndex + 1];
-    return nextId ? this.scrollTo(nextId) : Promise.resolve();
+    const currentActiveId = this.getActiveId();
+    const sections = this.getSections();
+    const currentIndex = currentActiveId ? sections.indexOf(currentActiveId) : -1;
+
+    if (currentIndex === -1 && sections.length > 0) {
+      // 현재 활성 섹션이 없으면 첫 번째 섹션으로
+      return this.scrollTo(sections[0]);
+    } else if (currentIndex < sections.length - 1) {
+      return this.scrollTo(sections[currentIndex + 1]);
+    }
+    return Promise.resolve();
   }
 
   /** 이전 섹션으로 스크롤합니다 */
   public scrollToPrev(): Promise<void> {
-    const ordered = this.getSections();
-    const currentIndex = this.activeId ? ordered.indexOf(this.activeId) : ordered.length;
-    const prevId = ordered[currentIndex - 1];
-    return prevId ? this.scrollTo(prevId) : Promise.resolve();
-  }
+    const currentActiveId = this.getActiveId();
+    const sections = this.getSections();
+    const currentIndex = currentActiveId ? sections.indexOf(currentActiveId) : -1;
 
-  /** 첫 번째 섹션으로 스크롤합니다 */
-  public scrollToFirst(): Promise<void> {
-    const ordered = this.getSections();
-    return ordered.length > 0 ? this.scrollTo(ordered[0]) : Promise.resolve();
-  }
-
-  /** 마지막 섹션으로 스크롤합니다 */
-  public scrollToLast(): Promise<void> {
-    const ordered = this.getSections();
-    return ordered.length > 0 ? this.scrollTo(ordered[ordered.length - 1]) : Promise.resolve();
-  }
-
-  /** 활성 섹션 변경 시 호출될 콜백을 등록합니다. 구독 해제 함수를 반환합니다 */
-  public onActiveChange(callback: ActiveChangeCallback): () => void {
-    this.listeners.add(callback);
-    callback(this.activeId, { previous: this.previousId, direction: this.scrollDirection });
-    return () => this.listeners.delete(callback);
-  }
-
-  /** 특정 섹션의 스크롤 진행률(0~1) 변경 시 호출될 콜백을 등록합니다 */
-  public onProgressChange(id: string, callback: ProgressCallback): () => void {
-    if (!this.progressListeners.has(id)) {
-      this.progressListeners.set(id, new Set());
+    if (currentIndex === -1 && sections.length > 0) {
+      // 현재 활성 섹션이 없으면 첫 번째 섹션으로
+      return this.scrollTo(sections[0]);
+    } else if (currentIndex > 0) {
+      return this.scrollTo(sections[currentIndex - 1]);
     }
-    this.progressListeners.get(id)!.add(callback);
-    return () => {
-      const set = this.progressListeners.get(id);
-      if (set) {
-        set.delete(callback);
-        if (set.size === 0) this.progressListeners.delete(id);
-      }
-    };
+    return Promise.resolve();
   }
 
-  private notifyListeners() {
-    const meta: ActiveChangeMeta = {
-      previous: this.previousId,
-      direction: this.scrollDirection,
-    };
-    this.listeners.forEach((listener) => listener(this.activeId, meta));
-  }
-
-  /** 모든 리소스를 정리합니다 */
+  /** 등록된 모든 이벤트 리스너와 observer를 해제하고 인스턴스를 정리합니다 */
   public destroy() {
     this.observer?.disconnect();
     this.resizeObserver?.disconnect();
-
-    if (this.scrollHandler) {
-      this.scrollRoot.removeEventListener('scroll', this.scrollHandler as EventListener);
-      this.scrollHandler = null;
-    }
-
-    if (this.keyboardHandler) {
-      document.removeEventListener('keydown', this.keyboardHandler);
-      this.keyboardHandler = null;
-    }
-
-    if (this.popstateHandler) {
-      window.removeEventListener('popstate', this.popstateHandler);
-      this.popstateHandler = null;
-    }
-
     this.sections.clear();
+    this.disabledSections.clear();
     this.listeners.clear();
     this.progressListeners.clear();
-    this.disabledSections.clear();
+    if (this.scrollHandler) {
+      this.scrollRoot.removeEventListener('scroll', this.scrollHandler as EventListener);
+    }
+    if (this.popstateHandler) {
+      window.removeEventListener('popstate', this.popstateHandler);
+    }
+    if (this.keyboardHandler) {
+      document.removeEventListener('keydown', this.keyboardHandler);
+    }
+    if (this.scrollAnimationId) {
+      cancelAnimationFrame(this.scrollAnimationId);
+    }
   }
 }
