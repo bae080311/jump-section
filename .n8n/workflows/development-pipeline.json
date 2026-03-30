@@ -253,7 +253,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nconst issueInfo = $('파일 내용 디코딩').first().json;\n\n// 응답 구조 검증\nif (!response.candidates || response.candidates.length === 0) {\n  throw new Error('Gemini candidates 없음. 전체 응답: ' + JSON.stringify(response).slice(0, 500));\n}\n\nconst candidate = response.candidates[0];\nconst finishReason = candidate.finishReason;\n\nif (!candidate.content) {\n  throw new Error(`Gemini content 없음. finishReason: ${finishReason}. 전체 응답: ` + JSON.stringify(candidate).slice(0, 500));\n}\n\nconst parts = candidate.content.parts;\nconst functionCalls = parts.filter(p => p.functionCall && p.functionCall.name === 'write_file');\nif (functionCalls.length === 0) {\n  const textParts = parts.filter(p => p.text).map(p => p.text).join(' ');\n  throw new Error(`write_file 함수 미사용. finishReason: ${finishReason}. 텍스트: ${textParts.slice(0, 300)}`);\n}\n\nconst files = functionCalls.map(p => ({\n  path: p.functionCall.args.path,\n  content: p.functionCall.args.content,\n  description: p.functionCall.args.description\n}));\n\nconst safeName = issueInfo.issueTitle\n  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);\nconst branchName = `ai/issue-${issueInfo.issueNumber}-${safeName}`;\n\nreturn [{\n  json: {\n    files,\n    branchName,\n    issueNumber: issueInfo.issueNumber,\n    issueTitle: issueInfo.issueTitle,\n    issueUrl: issueInfo.issueUrl,\n    repoOwner: issueInfo.repoOwner,\n    repoName: issueInfo.repoName,\n    filesSummary: files.map(f => `• \\`${f.path}\\`: ${f.description}`).join('\\n')\n  }\n}];"
+        "jsCode": "const response = $input.first().json;\nconst issueInfo = $('파일 내용 디코딩').first().json;\n\n// 응답 구조 검증\nif (!response.candidates || response.candidates.length === 0) {\n  throw new Error('Gemini candidates 없음. 전체 응답: ' + JSON.stringify(response).slice(0, 500));\n}\n\nconst candidate = response.candidates[0];\nconst finishReason = candidate.finishReason;\n\nif (!candidate.content) {\n  throw new Error(`Gemini content 없음. finishReason: ${finishReason}. 전체 응답: ` + JSON.stringify(candidate).slice(0, 500));\n}\n\nconst parts = candidate.content.parts;\nconst functionCalls = parts.filter(p => p.functionCall && p.functionCall.name === 'write_file');\nif (functionCalls.length === 0) {\n  const textParts = parts.filter(p => p.text).map(p => p.text).join(' ');\n  throw new Error(`write_file 함수 미사용. finishReason: ${finishReason}. 텍스트: ${textParts.slice(0, 300)}`);\n}\n\nconst files = functionCalls.map(p => ({\n  path: p.functionCall.args.path,\n  content: p.functionCall.args.content,\n  description: p.functionCall.args.description\n}));\n\nconst safeName = issueInfo.issueTitle\n  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);\nconst branchName = `ai/issue-${issueInfo.issueNumber}-${safeName}`;\n\nreturn [{\n  json: {\n    files,\n    branchName,\n    issueNumber: issueInfo.issueNumber,\n    issueTitle: issueInfo.issueTitle,\n    issueUrl: issueInfo.issueUrl,\n    repoOwner: issueInfo.repoOwner,\n    repoName: issueInfo.repoName,\n    scrollManagerSha: issueInfo.scrollManagerSha,\n    indexSha: issueInfo.indexSha,\n    filesSummary: files.map(f => `• \\`${f.path}\\`: ${f.description}`).join('\\n')\n  }\n}];"
       },
       "id": "parse-tool-use",
       "name": "Tool Use 결과 파싱",
@@ -337,7 +337,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nreturn data.files.map(file => ({\n  json: {\n    ...file,\n    branchName: data.branchName,\n    issueNumber: data.issueNumber,\n    repoOwner: data.repoOwner,\n    repoName: data.repoName\n  }\n}));"
+        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nconst shaMap = {\n  'packages/core/src/ScrollManager.ts': data.scrollManagerSha,\n  'packages/core/src/index.ts': data.indexSha\n};\nreturn data.files.map(file => ({\n  json: {\n    ...file,\n    sha: shaMap[file.path] || null,\n    branchName: data.branchName,\n    issueNumber: data.issueNumber,\n    repoOwner: data.repoOwner,\n    repoName: data.repoName\n  }\n}));"
       },
       "id": "split-files",
       "name": "파일 목록 분리",
@@ -375,7 +375,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"message\": \"feat: implement issue #{{ $json.issueNumber }} - {{ $json.description }}\",\n  \"content\": \"{{ Buffer.from($json.content).toString('base64') }}\",\n  \"branch\": \"{{ $json.branchName }}\"\n}",
+        "jsonBody": "={{ JSON.stringify(Object.assign({message:`feat: implement issue #${$json.issueNumber} - ${$json.description}`,content:Buffer.from($json.content).toString('base64'),branch:$json.branchName},$json.sha?{sha:$json.sha}:{})) }}",
         "options": {}
       },
       "id": "commit-files",
