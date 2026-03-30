@@ -488,12 +488,13 @@
     },
     {
       "parameters": {
-        "jsCode": "const getResp = $input.item.json;\nconst fileData = $('파일 목록 분리').item.json;\nconst sha = getResp.sha || null;\n\nreturn [{\n  json: {\n    filePath: fileData.filePath,\n    repoOwner: fileData.repoOwner,\n    repoName: fileData.repoName,\n    hasSha: !!sha,\n    commitMessage: fileData.commitMessage,\n    commitContent: fileData.commitContent,\n    commitBranch: fileData.commitBranch,\n    commitSha: sha || ''\n  }\n}];"
+        "mode": "combine",
+        "combinationMode": "mergeByPosition"
       },
       "id": "merge-sha",
-      "name": "파일 SHA 병합",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
+      "name": "파일+SHA 병합",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
       "position": [
         3100,
         300
@@ -501,7 +502,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $input.item.json;\nconst body = {\n  message: d.commitMessage,\n  content: d.commitContent,\n  branch: d.commitBranch\n};\nif (d.commitSha) body.sha = d.commitSha;\nreturn [{ json: { ...d, commitBodyStr: JSON.stringify(body) } }];"
+        "jsCode": "const d = $input.item.json;\nconst sha = d.sha || null;\nconst body = {\n  message: d.commitMessage,\n  content: d.commitContent,\n  branch: d.commitBranch\n};\nif (sha) body.sha = sha;\nreturn [{ json: { filePath: d.filePath, repoOwner: d.repoOwner, repoName: d.repoName, commitBodyStr: JSON.stringify(body) } }];"
       },
       "id": "prepare-commit-body",
       "name": "커밋 바디 준비",
@@ -756,6 +757,11 @@
             "node": "GitHub: 파일 SHA 조회",
             "type": "main",
             "index": 0
+          },
+          {
+            "node": "파일+SHA 병합",
+            "type": "main",
+            "index": 1
           }
         ]
       ]
@@ -786,14 +792,14 @@
       "main": [
         [
           {
-            "node": "파일 SHA 병합",
+            "node": "파일+SHA 병합",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "파일 SHA 병합": {
+    "파일+SHA 병합": {
       "main": [
         [
           {
