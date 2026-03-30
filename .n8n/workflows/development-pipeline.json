@@ -72,7 +72,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const issues = $input.all().map(i => i.json);\n\n// ai-implementing 라벨이 있어도 PR이 없으면 재처리 (중단된 파이프라인 재개)\nconst pending = issues.filter(issue => {\n  const labelNames = (issue.labels || []).map(l => l.name);\n  // PR이 연결된 이슈는 이미 완료된 것 → 건너뜀\n  // ai-implementing만 있고 PR 없음 → 중단된 것 → 재처리\n  // ai-implementing 없음 → 새 이슈 → 처리\n  const hasPrLabel = labelNames.includes('ai-pr-created');\n  return !hasPrLabel;\n});\n\nif (pending.length === 0) {\n  return [{ json: { hasIssue: false } }];\n}\nconst issue = pending[0];\nreturn [{\n  json: {\n    hasIssue: true,\n    issueNumber: issue.number,\n    issueTitle: issue.title,\n    issueBody: issue.body || '(설명 없음)',\n    issueUrl: issue.html_url,\n    repoOwner: 'bae080311',\n    repoName: 'jump-section'\n  }\n}];"
+        "jsCode": "const issues = $input.all().map(i => i.json);\n\nconst pending = issues.filter(issue => {\n  const labelNames = (issue.labels || []).map(l => l.name);\n  // ai-pr-created: 완료된 이슈 → 건너뜀\n  // ai-implementing: 현재 다른 실행이 처리 중 → 건너뜀 (중복 실행 방지)\n  // 두 라벨 모두 없음: 새 이슈 → 처리\n  return !labelNames.includes('ai-pr-created') && !labelNames.includes('ai-implementing');\n});\n\nif (pending.length === 0) {\n  return [{ json: { hasIssue: false } }];\n}\nconst issue = pending[0];\nreturn [{\n  json: {\n    hasIssue: true,\n    issueNumber: issue.number,\n    issueTitle: issue.title,\n    issueBody: issue.body || '(설명 없음)',\n    issueUrl: issue.html_url,\n    repoOwner: 'bae080311',\n    repoName: 'jump-section'\n  }\n}];"
       },
       "id": "extract-issue-info",
       "name": "Issue 정보 추출",
@@ -342,14 +342,118 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nconst shaMap = {\n  'packages/core/src/ScrollManager.ts': data.scrollManagerSha,\n  'packages/core/src/index.ts': data.indexSha\n};\nreturn data.files.map(file => {\n  const desc = (file.description || '').replace(/[\\x00-\\x1F\\x7F]/g, ' ').trim().slice(0, 72);\n  const content = (file.content || '').replace(/\\r/g, '\\n');\n  const filePath = (file.path || '').trim();\n  return {\n    json: {\n      filePath,\n      repoOwner: data.repoOwner,\n      repoName: data.repoName,\n      commitMessage: `feat: implement issue #${data.issueNumber} - ${desc}`,\n      commitContent: Buffer.from(content).toString('base64'),\n      commitBranch: data.branchName,\n      commitSha: shaMap[filePath] || null\n    }\n  };\n});"
+        "jsCode": "const branchRes = $input.item.json;\nconst data = $('Tool Use 결과 파싱').first().json;\nconst mainSha = $('GitHub: main SHA 조회').first().json;\n\n// 브랜치 생성 성공이면 object.sha, 실패(이미 존재)면 main SHA 사용\nconst headCommitSha = (branchRes.object && branchRes.object.sha)\n  ? branchRes.object.sha\n  : mainSha.object.sha;\n\nconst tree = data.files.map(file => ({\n  path: (file.path || '').trim(),\n  mode: '100644',\n  type: 'blob',\n  content: (file.content || '').replace(/\\r/g, '\\n')\n}));\n\nconst commitMsg = `feat: implement issue #${data.issueNumber} - ${data.issueTitle.slice(0, 60)}`;\n\nreturn [{ json: {\n  repoOwner: data.repoOwner,\n  repoName: data.repoName,\n  branchName: data.branchName,\n  commitMessage: commitMsg,\n  tree,\n  headCommitSha,\n  issueNumber: data.issueNumber,\n  issueTitle: data.issueTitle,\n  issueUrl: data.issueUrl,\n  filesSummary: data.filesSummary\n} }];"
       },
-      "id": "split-files",
-      "name": "파일 목록 분리",
+      "id": "prepare-tree-payload",
+      "name": "트리 페이로드 준비",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         2660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $json.repoOwner }}/{{ $json.repoName }}/git/commits/{{ $json.headCommitSha }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-head-commit",
+      "name": "GitHub: HEAD 커밋 조회",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $('트리 페이로드 준비').first().json.repoOwner }}/{{ $('트리 페이로드 준비').first().json.repoName }}/git/trees",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { base_tree: $json.tree.sha, tree: $('트리 페이로드 준비').first().json.tree } }}",
+        "options": {}
+      },
+      "id": "create-tree",
+      "name": "GitHub: 트리 생성",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $('트리 페이로드 준비').first().json.repoOwner }}/{{ $('트리 페이로드 준비').first().json.repoName }}/git/commits",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { message: $('트리 페이로드 준비').first().json.commitMessage, tree: $json.sha, parents: [$('트리 페이로드 준비').first().json.headCommitSha] } }}",
+        "options": {}
+      },
+      "id": "create-commit",
+      "name": "GitHub: 커밋 생성",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://api.github.com/repos/{{ $('트리 페이로드 준비').first().json.repoOwner }}/{{ $('트리 페이로드 준비').first().json.repoName }}/git/refs/heads/{{ $('트리 페이로드 준비').first().json.branchName }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { sha: $json.sha, force: false } }}",
+        "options": {}
+      },
+      "id": "update-ref",
+      "name": "GitHub: ref 업데이트",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3540,
         300
       ]
     },
@@ -388,7 +492,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        3100,
+        3760,
         300
       ],
       "onError": "continueRegularOutput"
@@ -452,62 +556,6 @@
         300
       ],
       "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "jsCode": "const d = $input.item.json;\nconst body = {\n  message: d.commitMessage,\n  content: d.commitContent,\n  branch: d.commitBranch\n};\nif (d.commitSha) body.sha = d.commitSha;\nreturn [{ json: { filePath: d.filePath, repoOwner: d.repoOwner, repoName: d.repoName, commitBodyStr: JSON.stringify(body) } }];"
-      },
-      "id": "prepare-commit-body",
-      "name": "커밋 바디 준비",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3210,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "method": "PUT",
-        "url": "=https://api.github.com/repos/{{ $json.repoOwner }}/{{ $json.repoName }}/contents/{{ $json.filePath.split('/').map(s => encodeURIComponent(s)).join('/') }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            { "name": "Accept", "value": "application/vnd.github+json" },
-            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" },
-            { "name": "User-Agent", "value": "n8n-jump-section" }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ JSON.parse($json.commitBodyStr) }}",
-        "options": {}
-      },
-      "id": "commit-file-code",
-      "name": "GitHub: 파일 커밋",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3320,
-        300
-      ],
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "mode": "runOnceForAllItems",
-        "jsCode": "// 모든 파일 커밋 완료 후 단일 아이템으로 집계 (PR 중복 방지)\nconst issueInfo = $('Tool Use 결과 파싱').first().json;\nreturn [{ json: issueInfo }];"
-      },
-      "id": "aggregate-commits",
-      "name": "커밋 집계",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3540,
-        300
-      ]
     },
     {
       "parameters": {
@@ -711,18 +759,62 @@
       "main": [
         [
           {
-            "node": "파일 목록 분리",
+            "node": "트리 페이로드 준비",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "파일 목록 분리": {
+    "트리 페이로드 준비": {
       "main": [
         [
           {
-            "node": "커밋 바디 준비",
+            "node": "GitHub: HEAD 커밋 조회",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: HEAD 커밋 조회": {
+      "main": [
+        [
+          {
+            "node": "GitHub: 트리 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: 트리 생성": {
+      "main": [
+        [
+          {
+            "node": "GitHub: 커밋 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: 커밋 생성": {
+      "main": [
+        [
+          {
+            "node": "GitHub: ref 업데이트",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: ref 업데이트": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Draft PR 생성",
             "type": "main",
             "index": 0
           }
@@ -745,39 +837,6 @@
         [
           {
             "node": "GitHub: ai-implementing 라벨 추가",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "커밋 바디 준비": {
-      "main": [
-        [
-          {
-            "node": "GitHub: 파일 커밋",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "GitHub: 파일 커밋": {
-      "main": [
-        [
-          {
-            "node": "커밋 집계",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "커밋 집계": {
-      "main": [
-        [
-          {
-            "node": "GitHub: Draft PR 생성",
             "type": "main",
             "index": 0
           }
