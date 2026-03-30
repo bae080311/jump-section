@@ -399,7 +399,7 @@
         "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"embeds\": [{\n    \"title\": \"🤖 AI PR 생성됨\",\n    \"description\": \"Issue [#{{ $('Tool Use 결과 파싱').first().json.issueNumber }}]({{ $('Tool Use 결과 파싱').first().json.issueUrl }}) 구현 완료\",\n    \"color\": 3066993,\n    \"fields\": [\n      { \"name\": \"PR\", \"value\": \"[{{ $json.title }}]({{ $json.html_url }})\", \"inline\": false },\n      { \"name\": \"브랜치\", \"value\": \"`{{ $('Tool Use 결과 파싱').first().json.branchName }}`\", \"inline\": true },\n      { \"name\": \"변경 내용\", \"value\": \"{{ $('Tool Use 결과 파싱').first().json.filesSummary }}\", \"inline\": false }\n    ],\n    \"footer\": { \"text\": \"jump-section AI Pipeline • Gemini • Draft PR\" },\n    \"timestamp\": \"{{ new Date().toISOString() }}\"\n  }]\n}",
+        "jsonBody": "={{ { embeds: [{ title: '🤖 AI PR 생성됨', description: 'Issue [#' + $('Tool Use 결과 파싱').first().json.issueNumber + '](' + $('Tool Use 결과 파싱').first().json.issueUrl + ') 구현 완료', color: 3066993, fields: [{ name: 'PR', value: '[' + $('GitHub: Draft PR 생성').first().json.title + '](' + $('GitHub: Draft PR 생성').first().json.html_url + ')', inline: false }, { name: '브랜치', value: '`' + $('Tool Use 결과 파싱').first().json.branchName + '`', inline: true }, { name: '변경 내용', value: $('Tool Use 결과 파싱').first().json.filesSummary, inline: false }], footer: { text: 'jump-section AI Pipeline • Gemini • Draft PR' }, timestamp: new Date().toISOString() }] } }}",
         "options": {}
       },
       "id": "discord-dev",
