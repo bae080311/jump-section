@@ -72,7 +72,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const issues = $input.all().map(i => i.json);\nconst pending = issues.filter(issue => {\n  const labelNames = (issue.labels || []).map(l => l.name);\n  return !labelNames.includes('ai-implementing');\n});\nif (pending.length === 0) {\n  return [{ json: { hasIssue: false } }];\n}\nconst issue = pending[0];\nreturn [{\n  json: {\n    hasIssue: true,\n    issueNumber: issue.number,\n    issueTitle: issue.title,\n    issueBody: issue.body || '(설명 없음)',\n    issueUrl: issue.html_url,\n    repoOwner: 'bae080311',\n    repoName: 'jump-section'\n  }\n}];"
+        "jsCode": "const issues = $input.all().map(i => i.json);\n\n// ai-implementing 라벨이 있어도 PR이 없으면 재처리 (중단된 파이프라인 재개)\nconst pending = issues.filter(issue => {\n  const labelNames = (issue.labels || []).map(l => l.name);\n  // PR이 연결된 이슈는 이미 완료된 것 → 건너뜀\n  // ai-implementing만 있고 PR 없음 → 중단된 것 → 재처리\n  // ai-implementing 없음 → 새 이슈 → 처리\n  const hasPrLabel = labelNames.includes('ai-pr-created');\n  return !hasPrLabel;\n});\n\nif (pending.length === 0) {\n  return [{ json: { hasIssue: false } }];\n}\nconst issue = pending[0];\nreturn [{\n  json: {\n    hasIssue: true,\n    issueNumber: issue.number,\n    issueTitle: issue.title,\n    issueBody: issue.body || '(설명 없음)',\n    issueUrl: issue.html_url,\n    repoOwner: 'bae080311',\n    repoName: 'jump-section'\n  }\n}]);"
       },
       "id": "extract-issue-info",
       "name": "Issue 정보 추출",
@@ -145,7 +145,8 @@
       "position": [
         1120,
         300
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -336,7 +337,8 @@
       "position": [
         2440,
         300
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -388,7 +390,8 @@
       "position": [
         3100,
         300
-      ]
+      ],
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -511,7 +514,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const https = require('https');\nconst issueInfo = $('Issue 정보 추출').first().json;\n\nfunction deleteLabel(owner, repo, issue, label) {\n  return new Promise((resolve) => {\n    const req = https.request({\n      hostname: 'api.github.com',\n      path: `/repos/${owner}/${repo}/issues/${issue}/labels/${encodeURIComponent(label)}`,\n      method: 'DELETE',\n      headers: {\n        'Accept': 'application/vnd.github+json',\n        'X-GitHub-Api-Version': '2022-11-28',\n        'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,\n        'User-Agent': 'n8n'\n      }\n    }, res => {\n      res.resume();\n      res.on('end', () => resolve(res.statusCode));\n    });\n    req.on('error', () => resolve(0));\n    req.end();\n  });\n}\n\nconst { repoOwner, repoName, issueNumber } = issueInfo;\n// 404는 이미 없는 라벨 → 무시\nawait deleteLabel(repoOwner, repoName, issueNumber, 'ai-implementing');\nawait deleteLabel(repoOwner, repoName, issueNumber, 'ai-implement');\n\nreturn [{ json: { ...$input.first().json, labelsRemoved: true } }];"
+        "jsCode": "const https = require('https');\nconst issueInfo = $('Issue 정보 추출').first().json;\n\nfunction githubRequest(method, path, body) {\n  return new Promise((resolve) => {\n    const bodyStr = body ? JSON.stringify(body) : null;\n    const req = https.request({\n      hostname: 'api.github.com',\n      path,\n      method,\n      headers: {\n        'Accept': 'application/vnd.github+json',\n        'X-GitHub-Api-Version': '2022-11-28',\n        'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,\n        'User-Agent': 'n8n',\n        ...(bodyStr ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(bodyStr) } : {})\n      }\n    }, res => { res.resume(); res.on('end', () => resolve(res.statusCode)); });\n    req.on('error', () => resolve(0));\n    if (bodyStr) req.write(bodyStr);\n    req.end();\n  });\n}\n\nconst { repoOwner, repoName, issueNumber } = issueInfo;\nconst base = `/repos/${repoOwner}/${repoName}/issues/${issueNumber}`;\n\n// 완료 표시 라벨 추가 후 처리 중 라벨 제거\nawait githubRequest('POST', `${base}/labels`, { labels: ['ai-pr-created'] });\nawait githubRequest('DELETE', `${base}/labels/ai-implementing`);\nawait githubRequest('DELETE', `${base}/labels/ai-implement`);\n\nreturn [{ json: { ...$input.first().json, labelsRemoved: true } }];"
       },
       "id": "remove-labels",
       "name": "GitHub: 라벨 정리",
