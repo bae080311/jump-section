@@ -337,7 +337,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nconst shaMap = {\n  'packages/core/src/ScrollManager.ts': data.scrollManagerSha,\n  'packages/core/src/index.ts': data.indexSha\n};\nreturn data.files.map(file => ({\n  json: {\n    ...file,\n    sha: shaMap[file.path] || null,\n    branchName: data.branchName,\n    issueNumber: data.issueNumber,\n    repoOwner: data.repoOwner,\n    repoName: data.repoName\n  }\n}));"
+        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nconst shaMap = {\n  'packages/core/src/ScrollManager.ts': data.scrollManagerSha,\n  'packages/core/src/index.ts': data.indexSha\n};\nreturn data.files.map(file => {\n  const sha = shaMap[file.path] || null;\n  const body = {\n    message: `feat: implement issue #${data.issueNumber} - ${file.description}`,\n    content: Buffer.from(file.content).toString('base64'),\n    branch: data.branchName\n  };\n  if (sha) body.sha = sha;\n  return {\n    json: {\n      path: file.path,\n      repoOwner: data.repoOwner,\n      repoName: data.repoName,\n      commitBody: body\n    }\n  };\n});"
       },
       "id": "split-files",
       "name": "파일 목록 분리",
@@ -375,7 +375,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify(Object.assign({message:`feat: implement issue #${$json.issueNumber} - ${$json.description}`,content:Buffer.from($json.content).toString('base64'),branch:$json.branchName},$json.sha?{sha:$json.sha}:{})) }}",
+        "jsonBody": "={{ $json.commitBody }}",
         "options": {}
       },
       "id": "commit-files",
