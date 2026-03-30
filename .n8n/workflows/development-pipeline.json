@@ -16,7 +16,10 @@
       "name": "Schedule (5분마다)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [240, 300]
+      "position": [
+        240,
+        300
+      ]
     },
     {
       "parameters": {
@@ -62,7 +65,10 @@
       "name": "GitHub: ai-implement 이슈 조회",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ]
     },
     {
       "parameters": {
@@ -72,7 +78,10 @@
       "name": "Issue 정보 추출",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 300]
+      "position": [
+        680,
+        300
+      ]
     },
     {
       "parameters": {
@@ -94,7 +103,10 @@
       "name": "IF: 처리할 이슈 있는지 확인",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [900, 300]
+      "position": [
+        900,
+        300
+      ]
     },
     {
       "parameters": {
@@ -130,7 +142,10 @@
       "name": "GitHub: ai-implementing 라벨 추가",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, 300]
+      "position": [
+        1120,
+        300
+      ]
     },
     {
       "parameters": {
@@ -159,7 +174,10 @@
       "name": "GitHub: ScrollManager.ts 읽기",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 200]
+      "position": [
+        1340,
+        200
+      ]
     },
     {
       "parameters": {
@@ -188,7 +206,10 @@
       "name": "GitHub: index.ts 읽기",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 400]
+      "position": [
+        1340,
+        400
+      ]
     },
     {
       "parameters": {
@@ -198,7 +219,10 @@
       "name": "파일 내용 디코딩",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1560, 300]
+      "position": [
+        1560,
+        300
+      ]
     },
     {
       "parameters": {
@@ -222,7 +246,10 @@
       "name": "Gemini: 코드 구현",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 300]
+      "position": [
+        1780,
+        300
+      ]
     },
     {
       "parameters": {
@@ -232,7 +259,10 @@
       "name": "Tool Use 결과 파싱",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 300]
+      "position": [
+        2000,
+        300
+      ]
     },
     {
       "parameters": {
@@ -261,7 +291,10 @@
       "name": "GitHub: main SHA 조회",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2220, 300]
+      "position": [
+        2220,
+        300
+      ]
     },
     {
       "parameters": {
@@ -297,17 +330,23 @@
       "name": "GitHub: 브랜치 생성",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2440, 300]
+      "position": [
+        2440,
+        300
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nconst shaMap = {\n  'packages/core/src/ScrollManager.ts': data.scrollManagerSha,\n  'packages/core/src/index.ts': data.indexSha\n};\nreturn data.files.map(file => {\n  const sha = shaMap[file.path] || null;\n  const body = {\n    message: `feat: implement issue #${data.issueNumber} - ${file.description}`,\n    content: Buffer.from(file.content).toString('base64'),\n    branch: data.branchName\n  };\n  if (sha) body.sha = sha;\n  return {\n    json: {\n      path: file.path,\n      repoOwner: data.repoOwner,\n      repoName: data.repoName,\n      commitBody: body\n    }\n  };\n});"
+        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nconst shaMap = {\n  'packages/core/src/ScrollManager.ts': data.scrollManagerSha,\n  'packages/core/src/index.ts': data.indexSha\n};\n\nfunction getSha(filePath) {\n  // 정확한 경로 매칭\n  if (shaMap[filePath]) return shaMap[filePath];\n  // 경로 끝부분 매칭 (Gemini가 다른 prefix를 붙이는 경우 대비)\n  for (const [key, sha] of Object.entries(shaMap)) {\n    if (sha && (filePath.endsWith(key) || filePath.includes(key.split('/').pop()))) return sha;\n  }\n  return null;\n}\n\nreturn data.files.map(file => {\n  const sha = getSha(file.path);\n  const body = {\n    message: `feat: implement issue #${data.issueNumber} - ${file.description}`,\n    content: Buffer.from(file.content).toString('base64'),\n    branch: data.branchName\n  };\n  if (sha) body.sha = sha;\n  return {\n    json: {\n      path: file.path,\n      repoOwner: data.repoOwner,\n      repoName: data.repoName,\n      commitBodyJson: JSON.stringify(body)\n    }\n  };\n});"
       },
       "id": "split-files",
       "name": "파일 목록 분리",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2660, 300]
+      "position": [
+        2660,
+        300
+      ]
     },
     {
       "parameters": {
@@ -335,15 +374,18 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={{ $json.commitBody }}",
-        "options": {}
+        "specifyBody": "string",
+        "options": {},
+        "body": "={{ $json.commitBodyJson }}"
       },
       "id": "commit-files",
       "name": "GitHub: 파일 커밋",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2880, 300]
+      "position": [
+        2880,
+        300
+      ]
     },
     {
       "parameters": {
@@ -379,7 +421,10 @@
       "name": "GitHub: Draft PR 생성",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3100, 300]
+      "position": [
+        3100,
+        300
+      ]
     },
     {
       "parameters": {
@@ -394,7 +439,10 @@
       "name": "Discord: PR 생성 알림",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3320, 300]
+      "position": [
+        3320,
+        300
+      ]
     },
     {
       "parameters": {
@@ -432,7 +480,10 @@
       "name": "GitHub: ai-implementing 라벨 확인/생성",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 300],
+      "position": [
+        1340,
+        300
+      ],
       "onError": "continueRegularOutput"
     }
   ],
