@@ -5,8 +5,17 @@ export interface ScrollOptions {
   hash?: boolean;
   /** window 대신 커스텀 스크롤 컨테이너를 사용합니다 */
   root?: HTMLElement | null;
-  /** Alt+ArrowDown/Up 키보드 네비게이션을 활성화합니다 */
-  keyboard?: boolean;
+  /** 키보드 네비게이션을 활성화하고 단축키를 설정합니다 (기본: Alt+ArrowDown/Up) */
+  keyboard?:
+    | boolean
+    | {
+        next?: string; // 예: 'ArrowDown'
+        previous?: string; // 예: 'ArrowUp'
+        altKey?: boolean;
+        ctrlKey?: boolean;
+        shiftKey?: boolean;
+        metaKey?: boolean;
+      };
 }
 
 export interface ActiveChangeMeta {
@@ -44,7 +53,7 @@ export class ScrollManager {
       root: null,
       keyboard: false,
       ...options,
-    };
+    } as Required<ScrollOptions>; // 'as Required<ScrollOptions>'를 추가하여 타입 추론 문제 해결
     this.initObserver();
     this.initScrollListener();
     if (this.options.hash) {
@@ -119,12 +128,51 @@ export class ScrollManager {
   private initKeyboard() {
     if (typeof window === 'undefined') return;
 
+    const keyboardOptions =
+      typeof this.options.keyboard === 'object' ? this.options.keyboard : {};
+
+    const defaultKeyboardConfig = {
+      next: 'ArrowDown',
+      previous: 'ArrowUp',
+      altKey: true,
+      ctrlKey: false,
+      shiftKey: false,
+      metaKey: false,
+    };
+
+    const config = { ...defaultKeyboardConfig, ...keyboardOptions };
+
     this.keyboardHandler = (e: KeyboardEvent) => {
-      if (!e.altKey) return;
-      if (e.key === 'ArrowDown') {
+      const isAltKey = config.altKey === undefined ? true : config.altKey;
+      const isCtrlKey = config.ctrlKey === undefined ? false : config.ctrlKey;
+      const isShiftKey = config.shiftKey === undefined ? false : config.shiftKey;
+      const isMetaKey = config.metaKey === undefined ? false : config.metaKey;
+
+      const matchesModifier = (
+        (isAltKey && e.altKey) ||
+        (isCtrlKey && e.ctrlKey) ||
+        (isShiftKey && e.shiftKey) ||
+        (isMetaKey && e.metaKey)
+      ) && !(
+        (!isAltKey && e.altKey) ||
+        (!isCtrlKey && e.ctrlKey) ||
+        (!isShiftKey && e.shiftKey) ||
+        (!isMetaKey && e.metaKey)
+      );
+      
+      // 기본값이 altKey: true 이므로, 다른 수식어 키가 명시적으로 false인 경우도 처리
+      const hasRequiredModifiers = 
+        (isAltKey ? e.altKey : !e.altKey) &&
+        (isCtrlKey ? e.ctrlKey : !e.ctrlKey) &&
+        (isShiftKey ? e.shiftKey : !e.shiftKey) &&
+        (isMetaKey ? e.metaKey : !e.metaKey);
+
+      if (!hasRequiredModifiers) return;
+
+      if (e.key === config.next) {
         e.preventDefault();
         this.scrollToNext();
-      } else if (e.key === 'ArrowUp') {
+      } else if (e.key === config.previous) {
         e.preventDefault();
         this.scrollToPrev();
       }
@@ -269,103 +317,127 @@ export class ScrollManager {
       console.warn(
         `[ScrollManager] Section with id "${id}" not found. Available sections: ${Array.from(this.sections.keys()).join(', ')}`,
       );
-      return Promise.resolve();
+      return Promise.reject(new Error(`Section with id "${id}" not found.`));
     }
 
-    const { offset, behavior } = this.options;
+    const offset = this.options.offset ?? 0;
+    let top = element.offsetTop - offset;
 
     if (this.options.root) {
-      const elementTop = element.offsetTop;
-      this.options.root.scrollTo({
-        top: elementTop + offset,
-        behavior,
-      });
-    } else {
-      const elementPosition = element.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({
-        top: elementPosition + offset,
-        behavior,
-      });
+      // 루트가 있는 경우, 루트 기준의 offsetTop 계산
+      const rootRect = this.options.root.getBoundingClientRect();
+      const elementRect = element.getBoundingClientRect();
+      top = elementRect.top - rootRect.top + this.options.root.scrollTop - offset;
     }
 
-    return new Promise<void>((resolve) => {
-      if (behavior === 'auto' || behavior === 'instant') {
-        resolve();
-        return;
-      }
+    return new Promise((resolve) => {
+      const scrollTarget = this.options.root ?? window;
+      const startScrollTop = this.currentScrollTop;
+      const distance = top - startScrollTop;
+      const duration = this.options.behavior === 'smooth' ? 500 : 0; // ms
+      const startTime = performance.now();
 
-      let lastScrollY = this.currentScrollTop;
-      let rafId: number;
+      const animateScroll = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = this.easeInOutQuad(progress);
+        const newScrollTop = startScrollTop + distance * ease;
 
-      const checkSettled = () => {
-        const current = this.currentScrollTop;
-        if (current === lastScrollY) {
-          cancelAnimationFrame(rafId);
-          resolve();
-          return;
+        if (this.options.root) {
+          this.options.root.scrollTop = newScrollTop;
+        } else {
+          window.scrollTo(0, newScrollTop);
         }
-        lastScrollY = current;
-        rafId = requestAnimationFrame(checkSettled);
+
+        if (progress < 1) {
+          requestAnimationFrame(animateScroll);
+        } else {
+          // 스크롤이 끝난 후, 실제 위치와 목표 위치가 다를 경우 한 번 더 조정
+          if (this.options.root) {
+            this.options.root.scrollTop = top;
+          } else {
+            window.scrollTo(0, top);
+          }
+
+          this.activeId = id; // 스크롤 완료 후 명시적으로 활성 ID 설정
+          this.scheduleNotify();
+          resolve();
+        }
       };
 
-      rafId = requestAnimationFrame(checkSettled);
-
-      // 안전망: 1초 후 강제 resolve
-      setTimeout(() => {
-        cancelAnimationFrame(rafId);
+      if (duration === 0) {
+        if (this.options.root) {
+          this.options.root.scrollTop = top;
+        } else {
+          window.scrollTo(0, top);
+        }
+        this.activeId = id; // 스크롤 완료 후 명시적으로 활성 ID 설정
+        this.scheduleNotify();
         resolve();
-      }, 1000);
+      } else {
+        requestAnimationFrame(animateScroll);
+      }
     });
   }
 
   /** 다음 섹션으로 스크롤합니다 */
   public scrollToNext(): Promise<void> {
-    const ordered = this.getSections();
-    const currentIndex = this.activeId ? ordered.indexOf(this.activeId) : -1;
-    const nextId = ordered[currentIndex + 1];
-    return nextId ? this.scrollTo(nextId) : Promise.resolve();
+    const sections = this.getSections();
+    const currentIndex = this.activeId ? sections.indexOf(this.activeId) : -1;
+
+    if (currentIndex === -1) {
+      // 활성 섹션이 없으면 첫 섹션으로 스크롤
+      if (sections.length > 0) {
+        return this.scrollTo(sections[0]);
+      }
+      return Promise.resolve();
+    }
+
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < sections.length) {
+      return this.scrollTo(sections[nextIndex]);
+    }
+    return Promise.resolve();
   }
 
   /** 이전 섹션으로 스크롤합니다 */
   public scrollToPrev(): Promise<void> {
-    const ordered = this.getSections();
-    const currentIndex = this.activeId ? ordered.indexOf(this.activeId) : ordered.length;
-    const prevId = ordered[currentIndex - 1];
-    return prevId ? this.scrollTo(prevId) : Promise.resolve();
+    const sections = this.getSections();
+    const currentIndex = this.activeId ? sections.indexOf(this.activeId) : -1;
+
+    if (currentIndex === -1) {
+      // 활성 섹션이 없으면 마지막 섹션으로 스크롤
+      if (sections.length > 0) {
+        return this.scrollTo(sections[sections.length - 1]);
+      }
+      return Promise.resolve();
+    }
+
+    const prevIndex = currentIndex - 1;
+    if (prevIndex >= 0) {
+      return this.scrollTo(sections[prevIndex]);
+    }
+    return Promise.resolve();
   }
 
-  /** 첫 번째 섹션으로 스크롤합니다 */
-  public scrollToFirst(): Promise<void> {
-    const ordered = this.getSections();
-    return ordered.length > 0 ? this.scrollTo(ordered[0]) : Promise.resolve();
+  private easeInOutQuad(t: number): number {
+    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
   }
 
-  /** 마지막 섹션으로 스크롤합니다 */
-  public scrollToLast(): Promise<void> {
-    const ordered = this.getSections();
-    return ordered.length > 0 ? this.scrollTo(ordered[ordered.length - 1]) : Promise.resolve();
-  }
-
-  /** 활성 섹션 변경 시 호출될 콜백을 등록합니다. 구독 해제 함수를 반환합니다 */
-  public onActiveChange(callback: ActiveChangeCallback): () => void {
+  /** 활성 섹션 변경 리스너를 등록합니다 */
+  public onActiveChange(callback: ActiveChangeCallback) {
     this.listeners.add(callback);
-    callback(this.activeId, { previous: this.previousId, direction: this.scrollDirection });
     return () => this.listeners.delete(callback);
   }
 
-  /** 특정 섹션의 스크롤 진행률(0~1) 변경 시 호출될 콜백을 등록합니다 */
-  public onProgressChange(id: string, callback: ProgressCallback): () => void {
+  /** 특정 섹션의 스크롤 진행률 리스너를 등록합니다 (0에서 1 사이 값) */
+  public onProgressChange(id: string, callback: ProgressCallback) {
     if (!this.progressListeners.has(id)) {
       this.progressListeners.set(id, new Set());
     }
-    this.progressListeners.get(id)!.add(callback);
-    return () => {
-      const set = this.progressListeners.get(id);
-      if (set) {
-        set.delete(callback);
-        if (set.size === 0) this.progressListeners.delete(id);
-      }
-    };
+    this.progressListeners.get(id)?.add(callback);
+    this.updateProgress(); // 초기 값 즉시 전달
+    return () => this.progressListeners.get(id)?.delete(callback);
   }
 
   private notifyListeners() {
@@ -376,29 +448,24 @@ export class ScrollManager {
     this.listeners.forEach((listener) => listener(this.activeId, meta));
   }
 
-  /** 모든 리소스를 정리합니다 */
+  /** 등록된 모든 이벤트 리스너와 observer를 정리합니다 */
   public destroy() {
     this.observer?.disconnect();
     this.resizeObserver?.disconnect();
-
     if (this.scrollHandler) {
       this.scrollRoot.removeEventListener('scroll', this.scrollHandler as EventListener);
-      this.scrollHandler = null;
     }
-
-    if (this.keyboardHandler) {
-      document.removeEventListener('keydown', this.keyboardHandler);
-      this.keyboardHandler = null;
-    }
-
     if (this.popstateHandler) {
       window.removeEventListener('popstate', this.popstateHandler);
-      this.popstateHandler = null;
     }
-
+    if (this.keyboardHandler) {
+      document.removeEventListener('keydown', this.keyboardHandler);
+    }
     this.sections.clear();
+    this.disabledSections.clear();
     this.listeners.clear();
     this.progressListeners.clear();
-    this.disabledSections.clear();
+    this.activeId = null;
+    this.previousId = null;
   }
 }
