@@ -485,7 +485,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const getResp = $input.item.json;\nconst fileData = $('파일 목록 분리').item.json;\nconst sha = getResp.sha || null;\nreturn [{\n  json: {\n    filePath: fileData.filePath,\n    repoOwner: fileData.repoOwner,\n    repoName: fileData.repoName,\n    commitMessage: fileData.commitMessage,\n    commitContent: fileData.commitContent,\n    commitBranch: fileData.commitBranch,\n    commitSha: sha || '',\n    hasSha: !!sha\n  }\n}];"
+        "jsCode": "const getResp = $input.item.json;\nconst fileData = $('파일 목록 분리').item.json;\nconst sha = getResp.sha || null;\n\nconst bodyObj = {\n  message: fileData.commitMessage,\n  content: fileData.commitContent,\n  branch: fileData.commitBranch\n};\nif (sha) bodyObj.sha = sha;\n\n// JSON.stringify가 모든 제어 문자를 올바르게 이스케이프\nreturn [{\n  json: {\n    filePath: fileData.filePath,\n    repoOwner: fileData.repoOwner,\n    repoName: fileData.repoName,\n    hasSha: !!sha,\n    commitBodyJson: JSON.stringify(bodyObj)\n  }\n}];"
       },
       "id": "merge-sha",
       "name": "파일 SHA 병합",
@@ -548,7 +548,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"message\": \"{{ $json.commitMessage }}\",\n  \"content\": \"{{ $json.commitContent }}\",\n  \"branch\": \"{{ $json.commitBranch }}\",\n  \"sha\": \"{{ $json.commitSha }}\"\n}",
+        "jsonBody": "={{ $json.commitBodyJson }}",
         "options": {}
       },
       "id": "commit-with-sha",
@@ -587,7 +587,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"message\": \"{{ $json.commitMessage }}\",\n  \"content\": \"{{ $json.commitContent }}\",\n  \"branch\": \"{{ $json.commitBranch }}\"\n}",
+        "jsonBody": "={{ $json.commitBodyJson }}",
         "options": {}
       },
       "id": "commit-no-sha",
