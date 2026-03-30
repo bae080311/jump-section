@@ -21,6 +21,7 @@ services:
       - N8N_LOG_LEVEL=info
       - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
       - NODE_FUNCTION_ALLOW_BUILTIN=https,url,buffer,crypto
+      - N8N_RUNNERS_ALLOW_BUILTIN_MODULES=https,url,buffer,crypto
     dns:
       - 8.8.8.8
       - 8.8.4.4
