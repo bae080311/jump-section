@@ -1,0 +1,33 @@
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: jump-section-n8n
+    restart: unless-stopped
+    ports:
+      - '5678:5678'
+    environment:
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678}
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER:-admin}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD:-changeme123}
+      - GENERIC_TIMEZONE=Asia/Seoul
+      - TZ=Asia/Seoul
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - EXECUTIONS_PROCESS=main
+      - N8N_LOG_LEVEL=info
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+    volumes:
+      - n8n_data:/home/node/.n8n
+    env_file:
+      - .env
+
+volumes:
+  n8n_data:
+    driver: local

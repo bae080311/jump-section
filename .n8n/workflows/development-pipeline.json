@@ -1,0 +1,349 @@
+{
+  "name": "jump-section: Development Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 5 }]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule (5분마다)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/bae080311/jump-section/issues",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "labels", "value": "ai-implement" },
+            { "name": "state", "value": "open" },
+            { "name": "per_page", "value": "10" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-labeled-issues",
+      "name": "GitHub: ai-implement 이슈 조회",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const issues = $input.all().map(i => i.json);\nconst pending = issues.filter(issue => {\n  const labelNames = (issue.labels || []).map(l => l.name);\n  return !labelNames.includes('ai-implementing');\n});\nif (pending.length === 0) {\n  return [{ json: { hasIssue: false } }];\n}\nconst issue = pending[0];\nreturn [{\n  json: {\n    hasIssue: true,\n    issueNumber: issue.number,\n    issueTitle: issue.title,\n    issueBody: issue.body || '(설명 없음)',\n    issueUrl: issue.html_url,\n    repoOwner: 'bae080311',\n    repoName: 'jump-section'\n  }\n}];"
+      },
+      "id": "extract-issue-info",
+      "name": "Issue 정보 추출",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "has-issue",
+              "leftValue": "={{ $json.hasIssue }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "true" }
+            }
+          ]
+        }
+      },
+      "id": "check-has-issue",
+      "name": "IF: 처리할 이슈 있는지 확인",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $('Issue 정보 추출').first().json.repoOwner }}/{{ $('Issue 정보 추출').first().json.repoName }}/issues/{{ $('Issue 정보 추출').first().json.issueNumber }}/labels",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"labels\": [\"ai-implementing\"] }",
+        "options": {}
+      },
+      "id": "mark-implementing",
+      "name": "GitHub: ai-implementing 라벨 추가",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $('Issue 정보 추출').first().json.repoOwner }}/{{ $('Issue 정보 추출').first().json.repoName }}/contents/packages/core/src/ScrollManager.ts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-scroll-manager",
+      "name": "GitHub: ScrollManager.ts 읽기",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $('Issue 정보 추출').first().json.repoOwner }}/{{ $('Issue 정보 추출').first().json.repoName }}/contents/packages/core/src/index.ts",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-index-ts",
+      "name": "GitHub: index.ts 읽기",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const issueInfo = $('Issue 정보 추출').first().json;\nconst smFile = $('GitHub: ScrollManager.ts 읽기').first().json;\nconst indexFile = $('GitHub: index.ts 읽기').first().json;\n\nconst smContent = Buffer.from(smFile.content.replace(/\\n/g, ''), 'base64').toString('utf8');\nconst indexContent = Buffer.from(indexFile.content.replace(/\\n/g, ''), 'base64').toString('utf8');\n\nconst userPrompt = `## Issue #${issueInfo.issueNumber}: ${issueInfo.issueTitle}\\n\\n${issueInfo.issueBody}\\n\\n---\\n\\n### packages/core/src/ScrollManager.ts\\n\\`\\`\\`typescript\\n${smContent}\\n\\`\\`\\`\\n\\n### packages/core/src/index.ts\\n\\`\\`\\`typescript\\n${indexContent}\\n\\`\\`\\`\\n\\nwrite_file 함수로 구현하세요. 테스트 파일도 포함하세요.`;\n\nconst geminiPayload = {\n  system_instruction: {\n    parts: [{ text: 'TypeScript 전문 개발자입니다. jump-section 라이브러리 신기능을 구현합니다.\\nPrettier(2sp, 세미콜론, 싱글쿼트, printWidth 100), strict 타입, Public API 하위 호환 유지.\\nwrite_file 함수로 변경 파일을 제출하세요.' }]\n  },\n  contents: [{ role: 'user', parts: [{ text: userPrompt }] }],\n  tools: [{\n    functionDeclarations: [{\n      name: 'write_file',\n      description: '수정하거나 새로 생성할 파일의 전체 내용을 제출합니다.',\n      parameters: {\n        type: 'OBJECT',\n        properties: {\n          path: { type: 'STRING', description: '파일 경로' },\n          content: { type: 'STRING', description: '파일 전체 내용' },\n          description: { type: 'STRING', description: '변경 설명' }\n        },\n        required: ['path', 'content', 'description']\n      }\n    }]\n  }],\n  toolConfig: { functionCallingConfig: { mode: 'ANY', allowedFunctionNames: ['write_file'] } },\n  generationConfig: { maxOutputTokens: 8192 }\n};\n\nreturn [{\n  json: {\n    ...issueInfo,\n    scrollManagerSha: smFile.sha,\n    indexSha: indexFile.sha,\n    geminiPayload\n  }\n}];"
+      },
+      "id": "decode-files",
+      "name": "파일 내용 디코딩",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.geminiPayload }}",
+        "options": {}
+      },
+      "id": "gemini-implement",
+      "name": "Gemini: 코드 구현",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst issueInfo = $('파일 내용 디코딩').first().json;\n\nconst parts = response.candidates[0].content.parts;\nconst functionCalls = parts.filter(p => p.functionCall && p.functionCall.name === 'write_file');\nif (functionCalls.length === 0) throw new Error('write_file 함수 미사용. 응답: ' + JSON.stringify(parts).slice(0, 300));\n\nconst files = functionCalls.map(p => ({\n  path: p.functionCall.args.path,\n  content: p.functionCall.args.content,\n  description: p.functionCall.args.description\n}));\n\nconst safeName = issueInfo.issueTitle\n  .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);\nconst branchName = `ai/issue-${issueInfo.issueNumber}-${safeName}`;\n\nreturn [{\n  json: {\n    files,\n    branchName,\n    issueNumber: issueInfo.issueNumber,\n    issueTitle: issueInfo.issueTitle,\n    issueUrl: issueInfo.issueUrl,\n    repoOwner: issueInfo.repoOwner,\n    repoName: issueInfo.repoName,\n    filesSummary: files.map(f => `• \\`${f.path}\\`: ${f.description}`).join('\\n')\n  }\n}];"
+      },
+      "id": "parse-tool-use",
+      "name": "Tool Use 결과 파싱",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $json.repoOwner }}/{{ $json.repoName }}/git/ref/heads/main",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-main-sha",
+      "name": "GitHub: main SHA 조회",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2220, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $('Tool Use 결과 파싱').first().json.repoOwner }}/{{ $('Tool Use 결과 파싱').first().json.repoName }}/git/refs",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"ref\": \"refs/heads/{{ $('Tool Use 결과 파싱').first().json.branchName }}\",\n  \"sha\": \"{{ $json.object.sha }}\"\n}",
+        "options": {}
+      },
+      "id": "create-branch",
+      "name": "GitHub: 브랜치 생성",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2440, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nreturn data.files.map(file => ({\n  json: {\n    ...file,\n    branchName: data.branchName,\n    issueNumber: data.issueNumber,\n    repoOwner: data.repoOwner,\n    repoName: data.repoName\n  }\n}));"
+      },
+      "id": "split-files",
+      "name": "파일 목록 분리",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2660, 300]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/{{ $json.repoOwner }}/{{ $json.repoName }}/contents/{{ $json.path }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"feat: implement issue #{{ $json.issueNumber }} - {{ $json.description }}\",\n  \"content\": \"{{ Buffer.from($json.content).toString('base64') }}\",\n  \"branch\": \"{{ $json.branchName }}\"\n}",
+        "options": {}
+      },
+      "id": "commit-files",
+      "name": "GitHub: 파일 커밋",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2880, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $('Tool Use 결과 파싱').first().json.repoOwner }}/{{ $('Tool Use 결과 파싱').first().json.repoName }}/pulls",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"title\": \"[AI] feat: implement #{{ $('Tool Use 결과 파싱').first().json.issueNumber }} {{ $('Tool Use 결과 파싱').first().json.issueTitle }}\",\n  \"body\": \"## Summary\\n\\nCloses #{{ $('Tool Use 결과 파싱').first().json.issueNumber }}\\n\\nAI가 자동 생성한 구현 PR입니다. **반드시 사람이 리뷰 후 머지하세요.**\\n\\n## Files Changed\\n\\n{{ $('Tool Use 결과 파싱').first().json.filesSummary }}\\n\\n## Testing\\n\\n- [ ] pnpm test 통과 확인\\n- [ ] 새 테스트 케이스 검토\\n- [ ] 수동 테스트\\n\\n---\\n\\n🤖 Generated by jump-section AI Pipeline\",\n  \"head\": \"{{ $('Tool Use 결과 파싱').first().json.branchName }}\",\n  \"base\": \"main\",\n  \"draft\": true\n}",
+        "options": {}
+      },
+      "id": "create-pr",
+      "name": "GitHub: Draft PR 생성",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3100, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://discord.com/api/webhooks/1486736470634004562/I9IhqT5kLtBRimRwXGvIycSSSZzVMYGR3mL78vaQ5svtxX1sJLxidw9145Blxiuod4iD",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"embeds\": [{\n    \"title\": \"🤖 AI PR 생성됨\",\n    \"description\": \"Issue [#{{ $('Tool Use 결과 파싱').first().json.issueNumber }}]({{ $('Tool Use 결과 파싱').first().json.issueUrl }}) 구현 완료\",\n    \"color\": 3066993,\n    \"fields\": [\n      { \"name\": \"PR\", \"value\": \"[{{ $json.title }}]({{ $json.html_url }})\", \"inline\": false },\n      { \"name\": \"브랜치\", \"value\": \"`{{ $('Tool Use 결과 파싱').first().json.branchName }}`\", \"inline\": true },\n      { \"name\": \"변경 내용\", \"value\": \"{{ $('Tool Use 결과 파싱').first().json.filesSummary }}\", \"inline\": false }\n    ],\n    \"footer\": { \"text\": \"jump-section AI Pipeline • Gemini • Draft PR\" },\n    \"timestamp\": \"{{ new Date().toISOString() }}\"\n  }]\n}",
+        "options": {}
+      },
+      "id": "discord-dev",
+      "name": "Discord: PR 생성 알림",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3320, 300]
+    }
+  ],
+  "connections": {
+    "Schedule (5분마다)": {
+      "main": [[{ "node": "GitHub: ai-implement 이슈 조회", "type": "main", "index": 0 }]]
+    },
+    "GitHub: ai-implement 이슈 조회": {
+      "main": [[{ "node": "Issue 정보 추출", "type": "main", "index": 0 }]]
+    },
+    "Issue 정보 추출": {
+      "main": [[{ "node": "IF: 처리할 이슈 있는지 확인", "type": "main", "index": 0 }]]
+    },
+    "IF: 처리할 이슈 있는지 확인": {
+      "main": [[{ "node": "GitHub: ai-implementing 라벨 추가", "type": "main", "index": 0 }]]
+    },
+    "GitHub: ai-implementing 라벨 추가": {
+      "main": [[
+        { "node": "GitHub: ScrollManager.ts 읽기", "type": "main", "index": 0 },
+        { "node": "GitHub: index.ts 읽기", "type": "main", "index": 0 }
+      ]]
+    },
+    "GitHub: ScrollManager.ts 읽기": {
+      "main": [[{ "node": "파일 내용 디코딩", "type": "main", "index": 0 }]]
+    },
+    "GitHub: index.ts 읽기": {
+      "main": [[{ "node": "파일 내용 디코딩", "type": "main", "index": 1 }]]
+    },
+    "파일 내용 디코딩": {
+      "main": [[{ "node": "Gemini: 코드 구현", "type": "main", "index": 0 }]]
+    },
+    "Gemini: 코드 구현": {
+      "main": [[{ "node": "Tool Use 결과 파싱", "type": "main", "index": 0 }]]
+    },
+    "Tool Use 결과 파싱": {
+      "main": [[{ "node": "GitHub: main SHA 조회", "type": "main", "index": 0 }]]
+    },
+    "GitHub: main SHA 조회": {
+      "main": [[{ "node": "GitHub: 브랜치 생성", "type": "main", "index": 0 }]]
+    },
+    "GitHub: 브랜치 생성": {
+      "main": [[{ "node": "파일 목록 분리", "type": "main", "index": 0 }]]
+    },
+    "파일 목록 분리": {
+      "main": [[{ "node": "GitHub: 파일 커밋", "type": "main", "index": 0 }]]
+    },
+    "GitHub: 파일 커밋": {
+      "main": [[{ "node": "GitHub: Draft PR 생성", "type": "main", "index": 0 }]]
+    },
+    "GitHub: Draft PR 생성": {
+      "main": [[{ "node": "Discord: PR 생성 알림", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": [{ "name": "jump-section" }, { "name": "development" }]
+}
