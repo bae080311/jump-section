@@ -481,8 +481,8 @@
           ]
         },
         "sendBody": true,
-        "specifyBody": "string",
-        "body": "={{ $json.commitBodyStr }}",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.parse($json.commitBodyStr) }}",
         "options": {}
       },
       "id": "commit-file-code",
