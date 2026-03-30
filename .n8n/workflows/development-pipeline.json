@@ -72,7 +72,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const issues = $input.all().map(i => i.json);\n\n// ai-implementing 라벨이 있어도 PR이 없으면 재처리 (중단된 파이프라인 재개)\nconst pending = issues.filter(issue => {\n  const labelNames = (issue.labels || []).map(l => l.name);\n  // PR이 연결된 이슈는 이미 완료된 것 → 건너뜀\n  // ai-implementing만 있고 PR 없음 → 중단된 것 → 재처리\n  // ai-implementing 없음 → 새 이슈 → 처리\n  const hasPrLabel = labelNames.includes('ai-pr-created');\n  return !hasPrLabel;\n});\n\nif (pending.length === 0) {\n  return [{ json: { hasIssue: false } }];\n}\nconst issue = pending[0];\nreturn [{\n  json: {\n    hasIssue: true,\n    issueNumber: issue.number,\n    issueTitle: issue.title,\n    issueBody: issue.body || '(설명 없음)',\n    issueUrl: issue.html_url,\n    repoOwner: 'bae080311',\n    repoName: 'jump-section'\n  }\n}]);"
+        "jsCode": "const issues = $input.all().map(i => i.json);\n\n// ai-implementing 라벨이 있어도 PR이 없으면 재처리 (중단된 파이프라인 재개)\nconst pending = issues.filter(issue => {\n  const labelNames = (issue.labels || []).map(l => l.name);\n  // PR이 연결된 이슈는 이미 완료된 것 → 건너뜀\n  // ai-implementing만 있고 PR 없음 → 중단된 것 → 재처리\n  // ai-implementing 없음 → 새 이슈 → 처리\n  const hasPrLabel = labelNames.includes('ai-pr-created');\n  return !hasPrLabel;\n});\n\nif (pending.length === 0) {\n  return [{ json: { hasIssue: false } }];\n}\nconst issue = pending[0];\nreturn [{\n  json: {\n    hasIssue: true,\n    issueNumber: issue.number,\n    issueTitle: issue.title,\n    issueBody: issue.body || '(설명 없음)',\n    issueUrl: issue.html_url,\n    repoOwner: 'bae080311',\n    repoName: 'jump-section'\n  }\n}];"
       },
       "id": "extract-issue-info",
       "name": "Issue 정보 추출",
