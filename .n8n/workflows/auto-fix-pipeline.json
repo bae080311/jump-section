@@ -367,7 +367,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://discord.com/api/webhooks/1486736470634004562/I9IhqT5kLtBRimRwXGvIycSSSZzVMYGR3mL78vaQ5svtxX1sJLxidw9145Blxiuod4iD",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"embeds\": [\n    {\n      \"title\": \"🔧 Gemini 리뷰 기반 자동 수정 완료\",\n      \"description\": \"[PR #{{ $('수정 결과 파싱').first().json.prNumber }}: {{ $('수정 결과 파싱').first().json.prTitle }}]({{ $('수정 결과 파싱').first().json.prUrl }})\",\n      \"color\": 15105570,\n      \"fields\": [\n        {\n          \"name\": \"수정된 파일\",\n          \"value\": \"{{ $('수정 결과 파싱').first().json.filesSummary }}\",\n          \"inline\": false\n        },\n        {\n          \"name\": \"브랜치\",\n          \"value\": \"`{{ $('수정 결과 파싱').first().json.headBranch }}`\",\n          \"inline\": true\n        }\n      ],\n      \"footer\": { \"text\": \"jump-section AI Pipeline • Gemini 자동 수정\" },\n      \"timestamp\": \"{{ new Date().toISOString() }}\"\n    }\n  ]\n}",

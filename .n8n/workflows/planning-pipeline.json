@@ -198,7 +198,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://discord.com/api/webhooks/1486736470634004562/I9IhqT5kLtBRimRwXGvIycSSSZzVMYGR3mL78vaQ5svtxX1sJLxidw9145Blxiuod4iD",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ { embeds: [{ title: '🗓️ 주간 기획 완료', description: 'Gemini AI가 이번 주 **' + $json.issueCount + '개**의 개선 이슈를 생성했습니다.', color: 5814783, fields: [{ name: '생성된 이슈', value: $json.issueLines, inline: false }], footer: { text: 'jump-section AI Pipeline • Gemini' }, timestamp: new Date().toISOString() }] } }}",
