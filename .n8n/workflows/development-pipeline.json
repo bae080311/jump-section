@@ -16,7 +16,10 @@
       "name": "Schedule (5분마다)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [240, 300]
+      "position": [
+        240,
+        300
+      ]
     },
     {
       "parameters": {
@@ -62,7 +65,10 @@
       "name": "GitHub: ai-implement 이슈 조회",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ]
     },
     {
       "parameters": {
@@ -72,7 +78,10 @@
       "name": "Issue 정보 추출",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 300]
+      "position": [
+        680,
+        300
+      ]
     },
     {
       "parameters": {
@@ -94,7 +103,10 @@
       "name": "IF: 처리할 이슈 있는지 확인",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [900, 300]
+      "position": [
+        900,
+        300
+      ]
     },
     {
       "parameters": {
@@ -130,7 +142,10 @@
       "name": "GitHub: ai-implementing 라벨 추가",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, 300]
+      "position": [
+        1120,
+        300
+      ]
     },
     {
       "parameters": {
@@ -159,7 +174,10 @@
       "name": "GitHub: ScrollManager.ts 읽기",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 200]
+      "position": [
+        1340,
+        200
+      ]
     },
     {
       "parameters": {
@@ -188,7 +206,10 @@
       "name": "GitHub: index.ts 읽기",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 400]
+      "position": [
+        1340,
+        400
+      ]
     },
     {
       "parameters": {
@@ -198,7 +219,10 @@
       "name": "파일 내용 디코딩",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1560, 300]
+      "position": [
+        1560,
+        300
+      ]
     },
     {
       "parameters": {
@@ -222,7 +246,10 @@
       "name": "Gemini: 코드 구현",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 300],
+      "position": [
+        1780,
+        300
+      ],
       "retryOnFail": true,
       "maxTries": 3,
       "waitBetweenTries": 30000
@@ -235,7 +262,10 @@
       "name": "Tool Use 결과 파싱",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 300]
+      "position": [
+        2000,
+        300
+      ]
     },
     {
       "parameters": {
@@ -264,7 +294,10 @@
       "name": "GitHub: main SHA 조회",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2220, 300]
+      "position": [
+        2220,
+        300
+      ]
     },
     {
       "parameters": {
@@ -300,7 +333,10 @@
       "name": "GitHub: 브랜치 생성",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2440, 300]
+      "position": [
+        2440,
+        300
+      ]
     },
     {
       "parameters": {
@@ -310,7 +346,10 @@
       "name": "파일 목록 분리",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2660, 300]
+      "position": [
+        2660,
+        300
+      ]
     },
     {
       "parameters": {
@@ -346,7 +385,10 @@
       "name": "GitHub: Draft PR 생성",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3100, 300]
+      "position": [
+        3100,
+        300
+      ]
     },
     {
       "parameters": {
@@ -361,7 +403,10 @@
       "name": "Discord: PR 생성 알림",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3320, 300]
+      "position": [
+        3320,
+        300
+      ]
     },
     {
       "parameters": {
@@ -399,7 +444,10 @@
       "name": "GitHub: ai-implementing 라벨 확인/생성",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 300],
+      "position": [
+        1340,
+        300
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -429,7 +477,10 @@
       "name": "GitHub: 파일 SHA 조회",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2880, 300],
+      "position": [
+        2880,
+        300
+      ],
       "onError": "continueRegularOutput"
     },
     {
@@ -440,7 +491,10 @@
       "name": "파일 SHA 병합",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3100, 300]
+      "position": [
+        3100,
+        300
+      ]
     },
     {
       "parameters": {
@@ -450,7 +504,23 @@
       "name": "GitHub: 파일 커밋",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [3320, 300]
+      "position": [
+        3320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const https = require('https');\nconst issueInfo = $('Issue 정보 추출').first().json;\n\nfunction deleteLabel(owner, repo, issue, label) {\n  return new Promise((resolve) => {\n    const req = https.request({\n      hostname: 'api.github.com',\n      path: `/repos/${owner}/${repo}/issues/${issue}/labels/${encodeURIComponent(label)}`,\n      method: 'DELETE',\n      headers: {\n        'Accept': 'application/vnd.github+json',\n        'X-GitHub-Api-Version': '2022-11-28',\n        'Authorization': `Bearer ${process.env.GITHUB_TOKEN}`,\n        'User-Agent': 'n8n'\n      }\n    }, res => {\n      res.resume();\n      res.on('end', () => resolve(res.statusCode));\n    });\n    req.on('error', () => resolve(0));\n    req.end();\n  });\n}\n\nconst { repoOwner, repoName, issueNumber } = issueInfo;\n// 404는 이미 없는 라벨 → 무시\nawait deleteLabel(repoOwner, repoName, issueNumber, 'ai-implementing');\nawait deleteLabel(repoOwner, repoName, issueNumber, 'ai-implement');\n\nreturn [{ json: { ...$input.first().json, labelsRemoved: true } }];"
+      },
+      "id": "remove-labels",
+      "name": "GitHub: 라벨 정리",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3760,
+        300
+      ]
     }
   ],
   "connections": {
@@ -601,7 +671,7 @@
       "main": [
         [
           {
-            "node": "Discord: PR 생성 알림",
+            "node": "GitHub: 라벨 정리",
             "type": "main",
             "index": 0
           }
@@ -646,6 +716,17 @@
         [
           {
             "node": "GitHub: Draft PR 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: 라벨 정리": {
+      "main": [
+        [
+          {
+            "node": "Discord: PR 생성 알림",
             "type": "main",
             "index": 0
           }
