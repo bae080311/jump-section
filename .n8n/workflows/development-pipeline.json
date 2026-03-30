@@ -342,7 +342,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nreturn data.files.map(file => {\n  // 제어 문자 제거 (줄바꿈, 탭 등이 JSON을 깨뜨림)\n  const desc = (file.description || '').replace(/[\\x00-\\x1F\\x7F]/g, ' ').trim().slice(0, 72);\n  const content = (file.content || '').replace(/\\r/g, '\\n');\n  return {\n    json: {\n      filePath: (file.path || '').trim(),\n      repoOwner: data.repoOwner,\n      repoName: data.repoName,\n      commitMessage: `feat: implement issue #${data.issueNumber} - ${desc}`,\n      commitContent: Buffer.from(content).toString('base64'),\n      commitBranch: data.branchName\n    }\n  };\n});"
+        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nconst shaMap = {\n  'packages/core/src/ScrollManager.ts': data.scrollManagerSha,\n  'packages/core/src/index.ts': data.indexSha\n};\nreturn data.files.map(file => {\n  const desc = (file.description || '').replace(/[\\x00-\\x1F\\x7F]/g, ' ').trim().slice(0, 72);\n  const content = (file.content || '').replace(/\\r/g, '\\n');\n  const filePath = (file.path || '').trim();\n  return {\n    json: {\n      filePath,\n      repoOwner: data.repoOwner,\n      repoName: data.repoName,\n      commitMessage: `feat: implement issue #${data.issueNumber} - ${desc}`,\n      commitContent: Buffer.from(content).toString('base64'),\n      commitBranch: data.branchName,\n      commitSha: shaMap[filePath] || null\n    }\n  };\n});"
       },
       "id": "split-files",
       "name": "파일 목록 분리",
@@ -455,53 +455,7 @@
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "=https://api.github.com/repos/{{ $json.repoOwner }}/{{ $json.repoName }}/contents/{{ $json.filePath }}?ref={{ $json.commitBranch }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Accept",
-              "value": "application/vnd.github+json"
-            },
-            {
-              "name": "X-GitHub-Api-Version",
-              "value": "2022-11-28"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "id": "get-file-sha",
-      "name": "GitHub: 파일 SHA 조회",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2880,
-        300
-      ],
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "mode": "mergeByIndex"
-      },
-      "id": "merge-sha",
-      "name": "파일+SHA 병합",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 2,
-      "position": [
-        3100,
-        300
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const d = $input.item.json;\nconst sha = d.sha || null;\nconst body = {\n  message: d.commitMessage,\n  content: d.commitContent,\n  branch: d.commitBranch\n};\nif (sha) body.sha = sha;\nreturn [{ json: { filePath: d.filePath, repoOwner: d.repoOwner, repoName: d.repoName, commitBodyStr: JSON.stringify(body) } }];"
+        "jsCode": "const d = $input.item.json;\nconst body = {\n  message: d.commitMessage,\n  content: d.commitContent,\n  branch: d.commitBranch\n};\nif (d.commitSha) body.sha = d.commitSha;\nreturn [{ json: { filePath: d.filePath, repoOwner: d.repoOwner, repoName: d.repoName, commitBodyStr: JSON.stringify(body) } }];"
       },
       "id": "prepare-commit-body",
       "name": "커밋 바디 준비",
@@ -753,14 +707,9 @@
       "main": [
         [
           {
-            "node": "GitHub: 파일 SHA 조회",
+            "node": "커밋 바디 준비",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "파일+SHA 병합",
-            "type": "main",
-            "index": 1
           }
         ]
       ]
@@ -781,28 +730,6 @@
         [
           {
             "node": "GitHub: ai-implementing 라벨 추가",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "GitHub: 파일 SHA 조회": {
-      "main": [
-        [
-          {
-            "node": "파일+SHA 병합",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "파일+SHA 병합": {
-      "main": [
-        [
-          {
-            "node": "커밋 바디 준비",
             "type": "main",
             "index": 0
           }
