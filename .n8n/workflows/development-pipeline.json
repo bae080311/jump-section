@@ -353,45 +353,6 @@
     },
     {
       "parameters": {
-        "method": "PUT",
-        "url": "=https://api.github.com/repos/{{ $json.repoOwner }}/{{ $json.repoName }}/contents/{{ $json.filePath }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Accept",
-              "value": "application/vnd.github+json"
-            },
-            {
-              "name": "X-GitHub-Api-Version",
-              "value": "2022-11-28"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "options": {},
-        "jsonBody": "={{ Object.assign({ message: $json.commitMessage, content: $json.commitContent, branch: $json.commitBranch }, $json.commitSha ? { sha: $json.commitSha } : {}) }}"
-      },
-      "id": "commit-files",
-      "name": "GitHub: 파일 커밋",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        3320,
-        300
-      ]
-    },
-    {
-      "parameters": {
         "method": "POST",
         "url": "=https://api.github.com/repos/{{ $('Tool Use 결과 파싱').first().json.repoOwner }}/{{ $('Tool Use 결과 파싱').first().json.repoName }}/pulls",
         "sendHeaders": true,
@@ -524,7 +485,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// GET 응답에서 sha 추출 (파일 없으면 null)\nconst getResp = $input.item.json;\nconst fileData = $('파일 목록 분리').item.json;\nconst sha = getResp.sha || null;\nreturn [{\n  json: {\n    filePath: fileData.filePath,\n    repoOwner: fileData.repoOwner,\n    repoName: fileData.repoName,\n    commitMessage: fileData.commitMessage,\n    commitContent: fileData.commitContent,\n    commitBranch: fileData.commitBranch,\n    commitSha: sha\n  }\n}];"
+        "jsCode": "const getResp = $input.item.json;\nconst fileData = $('파일 목록 분리').item.json;\nconst sha = getResp.sha || null;\nreturn [{\n  json: {\n    filePath: fileData.filePath,\n    repoOwner: fileData.repoOwner,\n    repoName: fileData.repoName,\n    commitMessage: fileData.commitMessage,\n    commitContent: fileData.commitContent,\n    commitBranch: fileData.commitBranch,\n    commitSha: sha || '',\n    hasSha: !!sha\n  }\n}];"
       },
       "id": "merge-sha",
       "name": "파일 SHA 병합",
@@ -533,6 +494,109 @@
       "position": [
         3100,
         300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "check-sha",
+              "leftValue": "={{ $json.hasSha }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "id": "if-has-sha",
+      "name": "IF: sha 있는지",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        3100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/{{ $json.repoOwner }}/{{ $json.repoName }}/contents/{{ $json.filePath }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $json.commitMessage }}\",\n  \"content\": \"{{ $json.commitContent }}\",\n  \"branch\": \"{{ $json.commitBranch }}\",\n  \"sha\": \"{{ $json.commitSha }}\"\n}",
+        "options": {}
+      },
+      "id": "commit-with-sha",
+      "name": "GitHub: 파일 커밋 (기존)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3320,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/{{ $json.repoOwner }}/{{ $json.repoName }}/contents/{{ $json.filePath }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"{{ $json.commitMessage }}\",\n  \"content\": \"{{ $json.commitContent }}\",\n  \"branch\": \"{{ $json.commitBranch }}\"\n}",
+        "options": {}
+      },
+      "id": "commit-no-sha",
+      "name": "GitHub: 파일 커밋 (신규)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3320,
+        400
       ]
     }
   ],
@@ -680,17 +744,6 @@
         ]
       ]
     },
-    "GitHub: 파일 커밋": {
-      "main": [
-        [
-          {
-            "node": "GitHub: Draft PR 생성",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "GitHub: Draft PR 생성": {
       "main": [
         [
@@ -728,7 +781,47 @@
       "main": [
         [
           {
-            "node": "GitHub: 파일 커밋",
+            "node": "IF: sha 있는지",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: sha 있는지": {
+      "main": [
+        [
+          {
+            "node": "GitHub: 파일 커밋 (기존)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "GitHub: 파일 커밋 (신규)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: 파일 커밋 (기존)": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Draft PR 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: 파일 커밋 (신규)": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Draft PR 생성",
             "type": "main",
             "index": 0
           }
