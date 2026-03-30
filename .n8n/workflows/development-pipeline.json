@@ -4,14 +4,22 @@
     {
       "parameters": {
         "rule": {
-          "interval": [{ "field": "minutes", "minutesInterval": 5 }]
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
         }
       },
       "id": "schedule-trigger",
       "name": "Schedule (5분마다)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [240, 300]
+      "position": [
+        240,
+        300
+      ]
     },
     {
       "parameters": {
@@ -20,17 +28,35 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Accept", "value": "application/vnd.github+json" },
-            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
           ]
         },
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "labels", "value": "ai-implement" },
-            { "name": "state", "value": "open" },
-            { "name": "per_page", "value": "10" }
+            {
+              "name": "labels",
+              "value": "ai-implement"
+            },
+            {
+              "name": "state",
+              "value": "open"
+            },
+            {
+              "name": "per_page",
+              "value": "10"
+            }
           ]
         },
         "options": {}
@@ -39,7 +65,10 @@
       "name": "GitHub: ai-implement 이슈 조회",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ]
     },
     {
       "parameters": {
@@ -49,7 +78,10 @@
       "name": "Issue 정보 추출",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 300]
+      "position": [
+        680,
+        300
+      ]
     },
     {
       "parameters": {
@@ -59,7 +91,10 @@
               "id": "has-issue",
               "leftValue": "={{ $json.hasIssue }}",
               "rightValue": true,
-              "operator": { "type": "boolean", "operation": "true" }
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
             }
           ]
         }
@@ -68,7 +103,10 @@
       "name": "IF: 처리할 이슈 있는지 확인",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [900, 300]
+      "position": [
+        900,
+        300
+      ]
     },
     {
       "parameters": {
@@ -77,10 +115,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Accept", "value": "application/vnd.github+json" },
-            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
           ]
         },
         "sendBody": true,
@@ -92,7 +142,10 @@
       "name": "GitHub: ai-implementing 라벨 추가",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1120, 300]
+      "position": [
+        1120,
+        300
+      ]
     },
     {
       "parameters": {
@@ -101,9 +154,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Accept", "value": "application/vnd.github+json" },
-            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
           ]
         },
         "options": {}
@@ -112,7 +174,10 @@
       "name": "GitHub: ScrollManager.ts 읽기",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 200]
+      "position": [
+        1340,
+        200
+      ]
     },
     {
       "parameters": {
@@ -121,9 +186,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Accept", "value": "application/vnd.github+json" },
-            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
           ]
         },
         "options": {}
@@ -132,7 +206,10 @@
       "name": "GitHub: index.ts 읽기",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1340, 400]
+      "position": [
+        1340,
+        400
+      ]
     },
     {
       "parameters": {
@@ -142,7 +219,10 @@
       "name": "파일 내용 디코딩",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1560, 300]
+      "position": [
+        1560,
+        300
+      ]
     },
     {
       "parameters": {
@@ -150,7 +230,12 @@
         "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -161,7 +246,10 @@
       "name": "Gemini: 코드 구현",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 300]
+      "position": [
+        1780,
+        300
+      ]
     },
     {
       "parameters": {
@@ -171,7 +259,10 @@
       "name": "Tool Use 결과 파싱",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 300]
+      "position": [
+        2000,
+        300
+      ]
     },
     {
       "parameters": {
@@ -180,9 +271,18 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Accept", "value": "application/vnd.github+json" },
-            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
           ]
         },
         "options": {}
@@ -191,7 +291,10 @@
       "name": "GitHub: main SHA 조회",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2220, 300]
+      "position": [
+        2220,
+        300
+      ]
     },
     {
       "parameters": {
@@ -200,10 +303,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Accept", "value": "application/vnd.github+json" },
-            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
           ]
         },
         "sendBody": true,
@@ -215,7 +330,10 @@
       "name": "GitHub: 브랜치 생성",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2440, 300]
+      "position": [
+        2440,
+        300
+      ]
     },
     {
       "parameters": {
@@ -225,7 +343,10 @@
       "name": "파일 목록 분리",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2660, 300]
+      "position": [
+        2660,
+        300
+      ]
     },
     {
       "parameters": {
@@ -234,10 +355,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Accept", "value": "application/vnd.github+json" },
-            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
           ]
         },
         "sendBody": true,
@@ -249,7 +382,10 @@
       "name": "GitHub: 파일 커밋",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2880, 300]
+      "position": [
+        2880,
+        300
+      ]
     },
     {
       "parameters": {
@@ -258,10 +394,22 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Accept", "value": "application/vnd.github+json" },
-            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
-            { "name": "Content-Type", "value": "application/json" },
-            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
           ]
         },
         "sendBody": true,
@@ -273,7 +421,10 @@
       "name": "GitHub: Draft PR 생성",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3100, 300]
+      "position": [
+        3100,
+        300
+      ]
     },
     {
       "parameters": {
@@ -288,62 +439,189 @@
       "name": "Discord: PR 생성 알림",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3320, 300]
+      "position": [
+        3320,
+        300
+      ]
     }
   ],
   "connections": {
     "Schedule (5분마다)": {
-      "main": [[{ "node": "GitHub: ai-implement 이슈 조회", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "GitHub: ai-implement 이슈 조회",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "GitHub: ai-implement 이슈 조회": {
-      "main": [[{ "node": "Issue 정보 추출", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Issue 정보 추출",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Issue 정보 추출": {
-      "main": [[{ "node": "IF: 처리할 이슈 있는지 확인", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "IF: 처리할 이슈 있는지 확인",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "IF: 처리할 이슈 있는지 확인": {
-      "main": [[{ "node": "GitHub: ai-implementing 라벨 추가", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "GitHub: ai-implementing 라벨 추가",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "GitHub: ai-implementing 라벨 추가": {
       "main": [
         [
-          { "node": "GitHub: ScrollManager.ts 읽기", "type": "main", "index": 0 },
-          { "node": "GitHub: index.ts 읽기", "type": "main", "index": 0 }
+          {
+            "node": "GitHub: ScrollManager.ts 읽기",
+            "type": "main",
+            "index": 0
+          }
         ]
       ]
     },
     "GitHub: ScrollManager.ts 읽기": {
-      "main": [[{ "node": "파일 내용 디코딩", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "GitHub: index.ts 읽기",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "GitHub: index.ts 읽기": {
-      "main": [[{ "node": "파일 내용 디코딩", "type": "main", "index": 1 }]]
+      "main": [
+        [
+          {
+            "node": "파일 내용 디코딩",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "파일 내용 디코딩": {
-      "main": [[{ "node": "Gemini: 코드 구현", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Gemini: 코드 구현",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Gemini: 코드 구현": {
-      "main": [[{ "node": "Tool Use 결과 파싱", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Tool Use 결과 파싱",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Tool Use 결과 파싱": {
-      "main": [[{ "node": "GitHub: main SHA 조회", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "GitHub: main SHA 조회",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "GitHub: main SHA 조회": {
-      "main": [[{ "node": "GitHub: 브랜치 생성", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "GitHub: 브랜치 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "GitHub: 브랜치 생성": {
-      "main": [[{ "node": "파일 목록 분리", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "파일 목록 분리",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "파일 목록 분리": {
-      "main": [[{ "node": "GitHub: 파일 커밋", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "GitHub: 파일 커밋",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "GitHub: 파일 커밋": {
-      "main": [[{ "node": "GitHub: Draft PR 생성", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "GitHub: Draft PR 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "GitHub: Draft PR 생성": {
-      "main": [[{ "node": "Discord: PR 생성 알림", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Discord: PR 생성 알림",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
-  "settings": { "executionOrder": "v1" },
-  "tags": [{ "name": "jump-section" }, { "name": "development" }]
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "jump-section"
+    },
+    {
+      "name": "development"
+    }
+  ]
 }
