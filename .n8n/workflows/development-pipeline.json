@@ -488,13 +488,12 @@
     },
     {
       "parameters": {
-        "mode": "combine",
-        "combinationMode": "mergeByPosition"
+        "mode": "mergeByIndex"
       },
       "id": "merge-sha",
       "name": "파일+SHA 병합",
       "type": "n8n-nodes-base.merge",
-      "typeVersion": 3,
+      "typeVersion": 2,
       "position": [
         3100,
         300
