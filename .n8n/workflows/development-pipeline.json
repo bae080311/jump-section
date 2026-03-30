@@ -337,7 +337,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nconst shaMap = {\n  'packages/core/src/ScrollManager.ts': data.scrollManagerSha,\n  'packages/core/src/index.ts': data.indexSha\n};\n\nfunction getSha(filePath) {\n  if (shaMap[filePath]) return shaMap[filePath];\n  for (const [key, sha] of Object.entries(shaMap)) {\n    if (sha && filePath.includes(key.split('/').pop())) return sha;\n  }\n  return null;\n}\n\nreturn data.files.map(file => ({\n  json: {\n    filePath: file.path,\n    repoOwner: data.repoOwner,\n    repoName: data.repoName,\n    commitMessage: `feat: implement issue #${data.issueNumber} - ${file.description}`,\n    commitContent: Buffer.from(file.content).toString('base64'),\n    commitBranch: data.branchName,\n    commitSha: getSha(file.path) || ''\n  }\n}));"
+        "jsCode": "const data = $('Tool Use 결과 파싱').first().json;\nreturn data.files.map(file => ({\n  json: {\n    filePath: file.path,\n    repoOwner: data.repoOwner,\n    repoName: data.repoName,\n    commitMessage: `feat: implement issue #${data.issueNumber} - ${file.description}`,\n    commitContent: Buffer.from(file.content).toString('base64'),\n    commitBranch: data.branchName\n  }\n}));"
       },
       "id": "split-files",
       "name": "파일 목록 분리",
@@ -383,7 +383,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        2880,
+        3320,
         300
       ]
     },
@@ -485,6 +485,52 @@
         300
       ],
       "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $json.repoOwner }}/{{ $json.repoName }}/contents/{{ $json.filePath }}?ref={{ $json.commitBranch }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-file-sha",
+      "name": "GitHub: 파일 SHA 조회",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2880,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// GET 응답에서 sha 추출 (파일 없으면 null)\nconst getResp = $input.item.json;\nconst fileData = $('파일 목록 분리').item.json;\nconst sha = getResp.sha || null;\nreturn [{\n  json: {\n    filePath: fileData.filePath,\n    repoOwner: fileData.repoOwner,\n    repoName: fileData.repoName,\n    commitMessage: fileData.commitMessage,\n    commitContent: fileData.commitContent,\n    commitBranch: fileData.commitBranch,\n    commitSha: sha\n  }\n}];"
+      },
+      "id": "merge-sha",
+      "name": "파일 SHA 병합",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3100,
+        300
+      ]
     }
   ],
   "connections": {
@@ -624,7 +670,7 @@
       "main": [
         [
           {
-            "node": "GitHub: 파일 커밋",
+            "node": "GitHub: 파일 SHA 조회",
             "type": "main",
             "index": 0
           }
@@ -658,6 +704,28 @@
         [
           {
             "node": "GitHub: ai-implementing 라벨 추가",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: 파일 SHA 조회": {
+      "main": [
+        [
+          {
+            "node": "파일 SHA 병합",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "파일 SHA 병합": {
+      "main": [
+        [
+          {
+            "node": "GitHub: 파일 커밋",
             "type": "main",
             "index": 0
           }
