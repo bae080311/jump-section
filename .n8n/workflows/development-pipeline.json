@@ -150,9 +150,7 @@
         "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
         "sendHeaders": true,
         "headerParameters": {
-          "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
-          ]
+          "parameters": [{ "name": "Content-Type", "value": "application/json" }]
         },
         "sendBody": true,
         "specifyBody": "json",
@@ -307,10 +305,12 @@
       "main": [[{ "node": "GitHub: ai-implementing 라벨 추가", "type": "main", "index": 0 }]]
     },
     "GitHub: ai-implementing 라벨 추가": {
-      "main": [[
-        { "node": "GitHub: ScrollManager.ts 읽기", "type": "main", "index": 0 },
-        { "node": "GitHub: index.ts 읽기", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          { "node": "GitHub: ScrollManager.ts 읽기", "type": "main", "index": 0 },
+          { "node": "GitHub: index.ts 읽기", "type": "main", "index": 0 }
+        ]
+      ]
     },
     "GitHub: ScrollManager.ts 읽기": {
       "main": [[{ "node": "파일 내용 디코딩", "type": "main", "index": 0 }]]

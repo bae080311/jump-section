@@ -8,9 +8,7 @@
             {
               "field": "weeks",
               "weeksInterval": 1,
-              "triggerAtDay": [
-                1
-              ],
+              "triggerAtDay": [1],
               "triggerAtHour": 9,
               "triggerAtMinute": 0
             }
@@ -21,10 +19,7 @@
       "name": "Schedule (매주 월요일 09:00)",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [
-        240,
-        300
-      ]
+      "position": [240, 300]
     },
     {
       "parameters": {
@@ -66,10 +61,7 @@
       "name": "GitHub: Open Issues 조회",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        460,
-        300
-      ]
+      "position": [460, 300]
     },
     {
       "parameters": {
@@ -111,10 +103,7 @@
       "name": "GitHub: 최근 커밋 조회",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        680,
-        300
-      ]
+      "position": [680, 300]
     },
     {
       "parameters": {
@@ -124,10 +113,7 @@
       "name": "컨텍스트 준비",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        900,
-        300
-      ]
+      "position": [900, 300]
     },
     {
       "parameters": {
@@ -151,10 +137,7 @@
       "name": "Gemini: 기획 아이디어",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        1120,
-        300
-      ]
+      "position": [1120, 300]
     },
     {
       "parameters": {
@@ -164,10 +147,7 @@
       "name": "아이디어 파싱",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1340,
-        300
-      ]
+      "position": [1340, 300]
     },
     {
       "parameters": {
@@ -203,10 +183,7 @@
       "name": "GitHub: Issue 생성",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        1560,
-        300
-      ]
+      "position": [1560, 300]
     },
     {
       "parameters": {
@@ -216,10 +193,7 @@
       "name": "이슈 집계",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1780,
-        300
-      ]
+      "position": [1780, 300]
     },
     {
       "parameters": {
@@ -234,10 +208,7 @@
       "name": "Discord: 기획 완료 알림",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        2000,
-        300
-      ]
+      "position": [2000, 300]
     }
   ],
   "connections": {

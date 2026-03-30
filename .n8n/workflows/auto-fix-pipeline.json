@@ -12,10 +12,7 @@
       "name": "Webhook: PR Review Event",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
-      "position": [
-        240,
-        300
-      ],
+      "position": [240, 300],
       "webhookId": "jump-section-auto-fix"
     },
     {
@@ -51,10 +48,7 @@
       "name": "IF: Gemini 리뷰인지 확인",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [
-        460,
-        300
-      ]
+      "position": [460, 300]
     },
     {
       "parameters": {
@@ -64,10 +58,7 @@
       "name": "PR 정보 추출",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        680,
-        300
-      ]
+      "position": [680, 300]
     },
     {
       "parameters": {
@@ -105,10 +96,7 @@
       "name": "GitHub: 리뷰 인라인 코멘트 조회",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        900,
-        200
-      ]
+      "position": [900, 200]
     },
     {
       "parameters": {
@@ -146,10 +134,7 @@
       "name": "GitHub: PR 변경 파일 조회",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        900,
-        400
-      ]
+      "position": [900, 400]
     },
     {
       "parameters": {
@@ -159,10 +144,7 @@
       "name": "리뷰 컨텍스트 준비",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1120,
-        300
-      ]
+      "position": [1120, 300]
     },
     {
       "parameters": {
@@ -184,10 +166,7 @@
       "name": "IF: 수정할 코멘트 있는지 확인",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [
-        1340,
-        300
-      ]
+      "position": [1340, 300]
     },
     {
       "parameters": {
@@ -197,10 +176,7 @@
       "name": "파일 목록 분리",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        1560,
-        300
-      ]
+      "position": [1560, 300]
     },
     {
       "parameters": {
@@ -238,10 +214,7 @@
       "name": "GitHub: 파일 내용 읽기",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        1780,
-        300
-      ]
+      "position": [1780, 300]
     },
     {
       "parameters": {
@@ -251,10 +224,7 @@
       "name": "파일 내용 디코딩",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        2000,
-        300
-      ]
+      "position": [2000, 300]
     },
     {
       "parameters": {
@@ -278,10 +248,7 @@
       "name": "Gemini: 코드 수정",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        2220,
-        300
-      ]
+      "position": [2220, 300]
     },
     {
       "parameters": {
@@ -291,10 +258,7 @@
       "name": "수정 결과 파싱",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        2440,
-        300
-      ]
+      "position": [2440, 300]
     },
     {
       "parameters": {
@@ -316,10 +280,7 @@
       "name": "IF: 수정된 파일 있는지 확인",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [
-        2660,
-        300
-      ]
+      "position": [2660, 300]
     },
     {
       "parameters": {
@@ -329,10 +290,7 @@
       "name": "수정 파일 분리",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        2880,
-        200
-      ]
+      "position": [2880, 200]
     },
     {
       "parameters": {
@@ -368,10 +326,7 @@
       "name": "GitHub: 수정 커밋",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        3100,
-        200
-      ]
+      "position": [3100, 200]
     },
     {
       "parameters": {
@@ -407,10 +362,7 @@
       "name": "GitHub: PR 코멘트 게시",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        3100,
-        400
-      ]
+      "position": [3100, 400]
     },
     {
       "parameters": {
@@ -425,10 +377,7 @@
       "name": "Discord: 자동 수정 알림",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [
-        3320,
-        300
-      ]
+      "position": [3320, 300]
     }
   ],
   "connections": {
