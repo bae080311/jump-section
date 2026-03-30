@@ -492,6 +492,20 @@
       "position": [
         3320,
         300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 모든 파일 커밋 완료 후 단일 아이템으로 집계 (PR 중복 방지)\nconst issueInfo = $('Tool Use 결과 파싱').first().json;\nreturn [{ json: issueInfo }];"
+      },
+      "id": "aggregate-commits",
+      "name": "커밋 집계",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3540,
+        300
       ]
     },
     {
@@ -748,6 +762,17 @@
       ]
     },
     "GitHub: 파일 커밋": {
+      "main": [
+        [
+          {
+            "node": "커밋 집계",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "커밋 집계": {
       "main": [
         [
           {
