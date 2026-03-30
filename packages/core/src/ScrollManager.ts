@@ -5,17 +5,12 @@ export interface ScrollOptions {
   hash?: boolean;
   /** window 대신 커스텀 스크롤 컨테이너를 사용합니다 */
   root?: HTMLElement | null;
-  /** 키보드 네비게이션을 활성화하고 단축키를 설정합니다 (기본: Alt+ArrowDown/Up) */
-  keyboard?:
-    | boolean
-    | {
-        next?: string; // 예: 'ArrowDown'
-        previous?: string; // 예: 'ArrowUp'
-        altKey?: boolean;
-        ctrlKey?: boolean;
-        shiftKey?: boolean;
-        metaKey?: boolean;
-      };
+  /**
+   * 키보드 네비게이션을 활성화합니다. 
+   * `true`로 설정하면 Alt+ArrowUp/Down 키로 이전/다음 섹션으로 이동합니다.
+   * 커스텀 키를 사용하려면 `{ prev: "KeyA", next: "KeyB" }`와 같은 객체를 전달합니다.
+   */
+  keyboard?: boolean | { prev: string; next: string };
 }
 
 export interface ActiveChangeMeta {
@@ -39,7 +34,7 @@ export class ScrollManager {
   private scrollDirection: 'up' | 'down' | null = null;
   private listeners: Set<ActiveChangeCallback> = new Set();
   private progressListeners: Map<string, Set<ProgressCallback>> = new Map();
-  private options: Required<ScrollOptions>;
+  private options: Required<Omit<ScrollOptions, 'keyboard'>> & { keyboard: false | { prev: string; next: string } };
   private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
   private scrollHandler: (() => void) | null = null;
   private popstateHandler: (() => void) | null = null;
@@ -53,7 +48,18 @@ export class ScrollManager {
       root: null,
       keyboard: false,
       ...options,
-    } as Required<ScrollOptions>; // 'as Required<ScrollOptions>'를 추가하여 타입 추론 문제 해결
+    } as Required<Omit<ScrollOptions, 'keyboard'>> & { keyboard: false | { prev: string; next: string } };
+
+    // keyboard 옵션 정규화
+    if (this.options.keyboard === true) {
+      this.options.keyboard = { prev: 'ArrowUp', next: 'ArrowDown' };
+    } else if (typeof this.options.keyboard === 'object') {
+      this.options.keyboard = {
+        prev: this.options.keyboard.prev || 'ArrowUp',
+        next: this.options.keyboard.next || 'ArrowDown',
+      };
+    }
+
     this.initObserver();
     this.initScrollListener();
     if (this.options.hash) {
@@ -80,6 +86,7 @@ export class ScrollManager {
 
     this.observer = new IntersectionObserver(this.handleIntersection, {
       root: this.options.root ?? null,
+      // IntersectionObserver가 rootMargin을 계산하는 방식 때문에 보정 필요
       rootMargin: '-20% 0px -60% 0px',
       threshold: [0, 0.1, 0.5, 1],
     });
@@ -126,53 +133,19 @@ export class ScrollManager {
   }
 
   private initKeyboard() {
-    if (typeof window === 'undefined') return;
-
-    const keyboardOptions =
-      typeof this.options.keyboard === 'object' ? this.options.keyboard : {};
-
-    const defaultKeyboardConfig = {
-      next: 'ArrowDown',
-      previous: 'ArrowUp',
-      altKey: true,
-      ctrlKey: false,
-      shiftKey: false,
-      metaKey: false,
-    };
-
-    const config = { ...defaultKeyboardConfig, ...keyboardOptions };
+    if (typeof window === 'undefined' || !this.options.keyboard) return;
 
     this.keyboardHandler = (e: KeyboardEvent) => {
-      const isAltKey = config.altKey === undefined ? true : config.altKey;
-      const isCtrlKey = config.ctrlKey === undefined ? false : config.ctrlKey;
-      const isShiftKey = config.shiftKey === undefined ? false : config.shiftKey;
-      const isMetaKey = config.metaKey === undefined ? false : config.metaKey;
+      const { prev, next } = this.options.keyboard as { prev: string; next: string };
 
-      const matchesModifier = (
-        (isAltKey && e.altKey) ||
-        (isCtrlKey && e.ctrlKey) ||
-        (isShiftKey && e.shiftKey) ||
-        (isMetaKey && e.metaKey)
-      ) && !(
-        (!isAltKey && e.altKey) ||
-        (!isCtrlKey && e.ctrlKey) ||
-        (!isShiftKey && e.shiftKey) ||
-        (!isMetaKey && e.metaKey)
-      );
-      
-      // 기본값이 altKey: true 이므로, 다른 수식어 키가 명시적으로 false인 경우도 처리
-      const hasRequiredModifiers = 
-        (isAltKey ? e.altKey : !e.altKey) &&
-        (isCtrlKey ? e.ctrlKey : !e.ctrlKey) &&
-        (isShiftKey ? e.shiftKey : !e.shiftKey) &&
-        (isMetaKey ? e.metaKey : !e.metaKey);
+      // Alt 키는 기본 동작으로 Alt+Arrow가 브라우저 히스토리 이동에 사용될 수 있으므로
+      // Alt 키 없이 단일 키만으로 동작하도록 변경
+      if (e.defaultPrevented) return; // 이미 다른 핸들러에 의해 처리됨
 
-      if (!hasRequiredModifiers) return;
-
-      if (e.key === config.next) {
+      if (e.key === next) {
         e.preventDefault();
         this.scrollToNext();
-      } else if (e.key === config.previous) {
+      } else if (e.key === prev) {
         e.preventDefault();
         this.scrollToPrev();
       }
@@ -192,7 +165,7 @@ export class ScrollManager {
 
     // element.id 대신 sections Map에서 id 역조회 (id와 element.id가 다를 수 있음)
     const entry = [...this.sections.entries()].find(([, el]) => el === best.target);
-    const id = entry?.[0] ?? best.target.id;
+    const id = entry?.[0] ?? best.target.id; // entry?.[0]이 우선, 없으면 element.id 사용
 
     if (!id || id === this.activeId || this.disabledSections.has(id)) return;
 
@@ -232,7 +205,7 @@ export class ScrollManager {
       const sectionHeight = element.offsetHeight || rect.height;
       if (sectionHeight === 0) return;
 
-      const rawProgress = (scrollTop - sectionTop + viewportHeight * 0.2) / sectionHeight;
+      const rawProgress = (scrollTop - sectionTop + viewportHeight * 0.2) / sectionHeight; // 20% 지점에서 시작
       const progress = Math.max(0, Math.min(1, rawProgress));
       callbacks.forEach((cb) => cb(progress));
     });
@@ -246,7 +219,7 @@ export class ScrollManager {
     this.sections.set(id, element);
 
     if (!element.id) {
-      element.id = id;
+      element.id = id; // 요소에 id가 없으면 할당
     }
 
     this.observer?.observe(element);
@@ -254,6 +227,7 @@ export class ScrollManager {
 
     // hash 옵션: 현재 URL hash와 일치하면 해당 섹션으로 스크롤
     if (this.options.hash && window.location.hash === `#${id}`) {
+      // 즉시 스크롤하면 IntersectionObserver가 제대로 작동하지 않을 수 있으므로 setTimeout
       setTimeout(() => this.scrollTo(id), 0);
     }
   }
@@ -296,9 +270,15 @@ export class ScrollManager {
     return [...this.sections.entries()]
       .filter(([id]) => !this.disabledSections.has(id))
       .sort(([, a], [, b]) => {
-        const aTop = a.getBoundingClientRect().top;
-        const bTop = b.getBoundingClientRect().top;
-        return aTop - bTop;
+        const aRect = a.getBoundingClientRect();
+        const bRect = b.getBoundingClientRect();
+
+        // root가 있을 경우 root 내부에서의 상대적인 위치를 사용
+        if (this.options.root) {
+          const rootRect = this.options.root.getBoundingClientRect();
+          return aRect.top - rootRect.top - (bRect.top - rootRect.top);
+        }
+        return aRect.top - bRect.top;
       })
       .map(([id]) => id);
   }
@@ -317,126 +297,94 @@ export class ScrollManager {
       console.warn(
         `[ScrollManager] Section with id "${id}" not found. Available sections: ${Array.from(this.sections.keys()).join(', ')}`,
       );
-      return Promise.reject(new Error(`Section with id "${id}" not found.`));
+      return Promise.reject(new Error(`Section "${id}" not found`));
     }
 
-    const offset = this.options.offset ?? 0;
-    let top = element.offsetTop - offset;
+    // 스크롤 위치 계산
+    const elementRect = element.getBoundingClientRect();
+    let targetScrollTop: number;
 
     if (this.options.root) {
-      // 루트가 있는 경우, 루트 기준의 offsetTop 계산
       const rootRect = this.options.root.getBoundingClientRect();
-      const elementRect = element.getBoundingClientRect();
-      top = elementRect.top - rootRect.top + this.options.root.scrollTop - offset;
+      targetScrollTop = this.options.root.scrollTop + (elementRect.top - rootRect.top) - this.options.offset;
+    } else {
+      targetScrollTop = window.scrollY + elementRect.top - this.options.offset;
     }
 
+    // 스크롤 옵션
+    const scrollOptions: ScrollToOptions = {
+      top: targetScrollTop,
+      behavior: this.options.behavior,
+    };
+
     return new Promise((resolve) => {
-      const scrollTarget = this.options.root ?? window;
-      const startScrollTop = this.currentScrollTop;
-      const distance = top - startScrollTop;
-      const duration = this.options.behavior === 'smooth' ? 500 : 0; // ms
-      const startTime = performance.now();
+      let animationFrame: number;
+      const checkScrollEnd = () => {
+        const current = this.currentScrollTop;
+        // 스크롤이 거의 멈췄거나 목표 지점에 도달했으면 완료
+        if (Math.abs(current - targetScrollTop) < 2 || this.options.behavior === 'auto') {
+          // focus 관리: 스크롤 후 해당 섹션의 첫 번째 포커스 가능한 요소에 포커스
+          const focusable = element.querySelector<HTMLElement>(
+            'a[href], button, input, textarea, select, details, [tabindex]:not([tabindex="-1"])',
+          );
+          focusable?.focus();
 
-      const animateScroll = (currentTime: number) => {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const ease = this.easeInOutQuad(progress);
-        const newScrollTop = startScrollTop + distance * ease;
-
-        if (this.options.root) {
-          this.options.root.scrollTop = newScrollTop;
-        } else {
-          window.scrollTo(0, newScrollTop);
-        }
-
-        if (progress < 1) {
-          requestAnimationFrame(animateScroll);
-        } else {
-          // 스크롤이 끝난 후, 실제 위치와 목표 위치가 다를 경우 한 번 더 조정
-          if (this.options.root) {
-            this.options.root.scrollTop = top;
-          } else {
-            window.scrollTo(0, top);
-          }
-
-          this.activeId = id; // 스크롤 완료 후 명시적으로 활성 ID 설정
-          this.scheduleNotify();
           resolve();
+          return;
         }
+        animationFrame = requestAnimationFrame(checkScrollEnd);
       };
 
-      if (duration === 0) {
-        if (this.options.root) {
-          this.options.root.scrollTop = top;
-        } else {
-          window.scrollTo(0, top);
-        }
-        this.activeId = id; // 스크롤 완료 후 명시적으로 활성 ID 설정
-        this.scheduleNotify();
-        resolve();
+      if (this.options.behavior === 'smooth') {
+        animationFrame = requestAnimationFrame(checkScrollEnd);
       } else {
-        requestAnimationFrame(animateScroll);
+        resolve(); // 'auto'일 경우 즉시 완료
+      }
+
+      if (this.options.root) {
+        this.options.root.scrollTo(scrollOptions);
+      } else {
+        window.scrollTo(scrollOptions);
       }
     });
   }
 
-  /** 다음 섹션으로 스크롤합니다 */
+  /** 현재 활성 섹션 다음 섹션으로 스크롤합니다 */
   public scrollToNext(): Promise<void> {
     const sections = this.getSections();
     const currentIndex = this.activeId ? sections.indexOf(this.activeId) : -1;
-
-    if (currentIndex === -1) {
-      // 활성 섹션이 없으면 첫 섹션으로 스크롤
-      if (sections.length > 0) {
-        return this.scrollTo(sections[0]);
-      }
-      return Promise.resolve();
-    }
-
     const nextIndex = currentIndex + 1;
+
     if (nextIndex < sections.length) {
       return this.scrollTo(sections[nextIndex]);
     }
     return Promise.resolve();
   }
 
-  /** 이전 섹션으로 스크롤합니다 */
+  /** 현재 활성 섹션 이전 섹션으로 스크롤합니다 */
   public scrollToPrev(): Promise<void> {
     const sections = this.getSections();
     const currentIndex = this.activeId ? sections.indexOf(this.activeId) : -1;
-
-    if (currentIndex === -1) {
-      // 활성 섹션이 없으면 마지막 섹션으로 스크롤
-      if (sections.length > 0) {
-        return this.scrollTo(sections[sections.length - 1]);
-      }
-      return Promise.resolve();
-    }
-
     const prevIndex = currentIndex - 1;
+
     if (prevIndex >= 0) {
       return this.scrollTo(sections[prevIndex]);
     }
     return Promise.resolve();
   }
 
-  private easeInOutQuad(t: number): number {
-    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-  }
-
-  /** 활성 섹션 변경 리스너를 등록합니다 */
+  /** 활성 섹션 변경을 구독합니다 */
   public onActiveChange(callback: ActiveChangeCallback) {
     this.listeners.add(callback);
     return () => this.listeners.delete(callback);
   }
 
-  /** 특정 섹션의 스크롤 진행률 리스너를 등록합니다 (0에서 1 사이 값) */
-  public onProgressChange(id: string, callback: ProgressCallback) {
+  /** 섹션 스크롤 진행률을 구독합니다 (0부터 1까지) */
+  public onProgress(id: string, callback: ProgressCallback) {
     if (!this.progressListeners.has(id)) {
       this.progressListeners.set(id, new Set());
     }
     this.progressListeners.get(id)?.add(callback);
-    this.updateProgress(); // 초기 값 즉시 전달
     return () => this.progressListeners.get(id)?.delete(callback);
   }
 
@@ -445,10 +393,10 @@ export class ScrollManager {
       previous: this.previousId,
       direction: this.scrollDirection,
     };
-    this.listeners.forEach((listener) => listener(this.activeId, meta));
+    this.listeners.forEach((cb) => cb(this.activeId, meta));
   }
 
-  /** 등록된 모든 이벤트 리스너와 observer를 정리합니다 */
+  /** 모든 리스너를 정리하고 observer를 해제합니다 */
   public destroy() {
     this.observer?.disconnect();
     this.resizeObserver?.disconnect();
@@ -465,7 +413,5 @@ export class ScrollManager {
     this.disabledSections.clear();
     this.listeners.clear();
     this.progressListeners.clear();
-    this.activeId = null;
-    this.previousId = null;
   }
 }
