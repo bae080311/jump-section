@@ -151,7 +151,7 @@
     {
       "parameters": {
         "method": "GET",
-        "url": "=https://api.github.com/repos/{{ $('Issue 정보 추출').first().json.repoOwner }}/{{ $('Issue 정보 추출').first().json.repoName }}/contents/packages/core/src/ScrollManager.ts",
+        "url": "={{ 'https://api.github.com/repos/' + $('Issue 정보 추출').first().json.repoOwner + '/' + $('Issue 정보 추출').first().json.repoName + '/contents/packages/core/src/ScrollManager.ts' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -178,12 +178,15 @@
       "position": [
         1340,
         200
-      ]
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "=https://api.github.com/repos/{{ $('Issue 정보 추출').first().json.repoOwner }}/{{ $('Issue 정보 추출').first().json.repoName }}/contents/packages/core/src/index.ts",
+        "url": "={{ 'https://api.github.com/repos/' + $('Issue 정보 추출').first().json.repoOwner + '/' + $('Issue 정보 추출').first().json.repoName + '/contents/packages/core/src/index.ts' }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -210,7 +213,10 @@
       "position": [
         1340,
         400
-      ]
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
