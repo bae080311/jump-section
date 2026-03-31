@@ -39,7 +39,14 @@ CLAUDE.md의 규칙을 준수하며 구현:
 - **문서** `docs/` 해당 페이지 반영 (새 옵션/메서드/동작 변경 포함)
 - **타입** Public API 변경 시 인터페이스/타입 정의 업데이트
 
-구현 완료 후 `pnpm test` 와 `pnpm build` 가 통과하는지 확인하세요.
+구현 완료 후 아래 순서로 확인하세요:
+
+```bash
+pnpm build
+pnpm test:coverage
+```
+
+`pnpm test:coverage` 결과에서 coverage 테이블을 그대로 출력하고, 80% 미달 항목이 있으면 테스트를 보완한 뒤 다시 실행하세요. 최종적으로 coverage 결과를 대화창에 코드블록으로 붙여넣으세요.
 
 ### 5. Draft PR 생성
 
