@@ -5,7 +5,7 @@
       "parameters": {
         "httpMethod": "POST",
         "path": "pr-auto-fix",
-        "responseMode": "immediatelyAfterReceive",
+        "responseMode": "onReceived",
         "responseData": "noData"
       },
       "id": "webhook-trigger",
@@ -138,7 +138,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const prInfo = $('PR 정보 추출').first().json;\nconst inlineComments = $('GitHub: 리뷰 인라인 코멘트 조회').all().map(i => i.json);\nconst prFiles = $('GitHub: PR 변경 파일 조회').all().map(f => f.json);\n\n// Gemini 인라인 코멘트 필터링\nconst geminiComments = inlineComments.filter(c =>\n  c.user && c.user.login === 'gemini-code-assist[bot]'\n);\n\n// 코멘트 텍스트 정리\nconst commentsText = geminiComments.length > 0\n  ? geminiComments.map(c => `📍 ${c.path} (line ${c.original_line || c.line || '?'}):\\n${c.body}`).join('\\n\\n')\n  : '(인라인 코멘트 없음)';\n\n// 변경 파일 목록\nconst filePaths = prFiles.map(f => f.filename);\n\n// 리뷰 전체 요약\nconst reviewSummary = [\n  `## Gemini 리뷰 요약\\n${prInfo.reviewBody || '(없음)'}`,\n  `## 인라인 코멘트\\n${commentsText}`\n].join('\\n\\n');\n\nreturn [{\n  json: {\n    ...prInfo,\n    reviewSummary,\n    filePaths,\n    hasComments: geminiComments.length > 0 || prInfo.reviewBody.length > 0\n  }\n}];"
+        "jsCode": "const prInfo = $('PR 정보 추출').first().json;\nconst inlineComments = $('GitHub: 리뷰 인라인 코멘트 조회').all().map(i => i.json);\nconst prFiles = $input.all().map(f => f.json);\n\n// Gemini 인라인 코멘트 필터링\nconst geminiComments = inlineComments.filter(c =>\n  c.user && c.user.login === 'gemini-code-assist[bot]'\n);\n\n// 코멘트 텍스트 정리\nconst commentsText = geminiComments.length > 0\n  ? geminiComments.map(c => `📍 ${c.path} (line ${c.original_line || c.line || '?'}):\\n${c.body}`).join('\\n\\n')\n  : '(인라인 코멘트 없음)';\n\n// 변경 파일 목록\nconst filePaths = prFiles.map(f => f.filename);\n\n// 리뷰 전체 요약\nconst reviewSummary = [\n  `## Gemini 리뷰 요약\\n${prInfo.reviewBody || '(없음)'}`,\n  `## 인라인 코멘트\\n${commentsText}`\n].join('\\n\\n');\n\nreturn [{\n  json: {\n    ...prInfo,\n    reviewSummary,\n    filePaths,\n    hasComments: geminiComments.length > 0 || prInfo.reviewBody.length > 0\n  }\n}];"
       },
       "id": "prepare-context",
       "name": "리뷰 컨텍스트 준비",
@@ -284,49 +284,13 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\nreturn data.fixedFiles.map(file => ({\n  json: {\n    ...file,\n    headBranch: data.headBranch,\n    prNumber: data.prNumber,\n    repoOwner: data.repoOwner,\n    repoName: data.repoName,\n    _summary: data.filesSummary\n  }\n}));"
+        "jsCode": "const data = $input.first().json;\nconst { fixedFiles, headBranch, repoOwner, repoName, filesSummary } = data;\nconst token = $env.GITHUB_TOKEN;\n\nconst headers = {\n  'Authorization': `Bearer ${token}`,\n  'Accept': 'application/vnd.github+json',\n  'X-GitHub-Api-Version': '2022-11-28',\n  'Content-Type': 'application/json'\n};\n\nconst baseUrl = `https://api.github.com/repos/${repoOwner}/${repoName}`;\n\nfunction request(method, url, body) {\n  return new Promise((resolve, reject) => {\n    const https = require('https');\n    const urlObj = new URL(url);\n    const options = { hostname: urlObj.hostname, path: urlObj.pathname + urlObj.search, method, headers };\n    const req = https.request(options, (res) => {\n      let d = '';\n      res.on('data', chunk => d += chunk);\n      res.on('end', () => {\n        if (res.statusCode >= 400) reject(new Error(`HTTP ${res.statusCode}: ${d}`));\n        else resolve(JSON.parse(d));\n      });\n    });\n    req.on('error', reject);\n    if (body) req.write(JSON.stringify(body));\n    req.end();\n  });\n}\n\n// 1. HEAD SHA\nconst refData = await request('GET', `${baseUrl}/git/refs/heads/${headBranch}`);\nconst baseSha = refData.object.sha;\n\n// 2. 현재 트리 SHA\nconst commitData = await request('GET', `${baseUrl}/git/commits/${baseSha}`);\nconst baseTreeSha = commitData.tree.sha;\n\n// 3. 새 트리 생성 (모든 파일 한번에)\nconst newTree = await request('POST', `${baseUrl}/git/trees`, {\n  base_tree: baseTreeSha,\n  tree: fixedFiles.map(f => ({ path: f.path, mode: '100644', type: 'blob', content: f.content }))\n});\n\n// 4. 커밋 생성\nconst newCommit = await request('POST', `${baseUrl}/git/commits`, {\n  message: `fix: apply Gemini review suggestions\\n\\n${filesSummary}`,\n  tree: newTree.sha,\n  parents: [baseSha]\n});\n\n// 5. 브랜치 ref 업데이트\nawait request('PATCH', `${baseUrl}/git/refs/heads/${headBranch}`, { sha: newCommit.sha });\n\nreturn [{ json: { ...data, commitSha: newCommit.sha } }];"
       },
-      "id": "split-fixed-files",
-      "name": "수정 파일 분리",
+      "id": "commit-fixes",
+      "name": "GitHub: Trees API 커밋",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [2880, 200]
-    },
-    {
-      "parameters": {
-        "method": "PUT",
-        "url": "=https://api.github.com/repos/{{ $json.repoOwner }}/{{ $json.repoName }}/contents/{{ $json.path }}",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Accept",
-              "value": "application/vnd.github+json"
-            },
-            {
-              "name": "X-GitHub-Api-Version",
-              "value": "2022-11-28"
-            },
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            },
-            {
-              "name": "Authorization",
-              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
-            }
-          ]
-        },
-        "sendBody": true,
-        "specifyBody": "json",
-        "jsonBody": "={\n  \"message\": \"fix: apply Gemini review suggestions - {{ $json.description }}\",\n  \"content\": \"{{ Buffer.from($json.content).toString('base64') }}\",\n  \"sha\": \"{{ $json.sha }}\",\n  \"branch\": \"{{ $json.headBranch }}\"\n}",
-        "options": {}
-      },
-      "id": "commit-fixes",
-      "name": "GitHub: 수정 커밋",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [3100, 200]
     },
     {
       "parameters": {
@@ -410,11 +374,6 @@
             "node": "GitHub: 리뷰 인라인 코멘트 조회",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "GitHub: PR 변경 파일 조회",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -423,7 +382,7 @@
       "main": [
         [
           {
-            "node": "리뷰 컨텍스트 준비",
+            "node": "GitHub: PR 변경 파일 조회",
             "type": "main",
             "index": 0
           }
@@ -436,7 +395,7 @@
           {
             "node": "리뷰 컨텍스트 준비",
             "type": "main",
-            "index": 1
+            "index": 0
           }
         ]
       ]
@@ -522,7 +481,7 @@
       "main": [
         [
           {
-            "node": "수정 파일 분리",
+            "node": "GitHub: Trees API 커밋",
             "type": "main",
             "index": 0
           },
@@ -534,18 +493,7 @@
         ]
       ]
     },
-    "수정 파일 분리": {
-      "main": [
-        [
-          {
-            "node": "GitHub: 수정 커밋",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "GitHub: 수정 커밋": {
+    "GitHub: Trees API 커밋": {
       "main": [
         [
           {
