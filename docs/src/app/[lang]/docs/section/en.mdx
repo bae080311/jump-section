@@ -9,11 +9,11 @@ The `Section` component is a wrapper that registers a scroll section with the sc
 
 ## Props
 
-| Prop | Type | Required | Description |
-|------|------|----------|-------------|
-| `id` | `string` | Yes | Unique identifier for the section (used by `scrollTo(id)` and for active detection). |
-| `as` | `ElementType` | No | HTML tag or component to render (default: `'section'`). |
-| ... | `HTMLAttributes<HTMLElement>` | No | Any standard HTML attributes (`className`, `style`, etc.). |
+| Prop | Type                          | Required | Description                                                                          |
+| ---- | ----------------------------- | -------- | ------------------------------------------------------------------------------------ |
+| `id` | `string`                      | Yes      | Unique identifier for the section (used by `scrollTo(id)` and for active detection). |
+| `as` | `ElementType`                 | No       | HTML tag or component to render (default: `'section'`).                              |
+| ...  | `HTMLAttributes<HTMLElement>` | No       | Any standard HTML attributes (`className`, `style`, etc.).                           |
 
 ## Examples
 
@@ -29,7 +29,7 @@ import { ScrollSectionProvider, Section } from '@jump-section/react';
   <Section id="section-2" className="min-h-screen p-10">
     <h1>Section 2</h1>
   </Section>
-</ScrollSectionProvider>
+</ScrollSectionProvider>;
 ```
 
 ### Render as a different tag
@@ -56,7 +56,7 @@ const sectionRef = useRef<HTMLElement>(null);
 
 <Section ref={sectionRef} id="contact">
   Contact section
-</Section>
+</Section>;
 ```
 
 ## Related

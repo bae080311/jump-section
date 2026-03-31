@@ -1,0 +1,583 @@
+{
+  "name": "jump-section: Auto Fix Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "pr-auto-fix",
+        "responseMode": "immediatelyAfterReceive",
+        "responseData": "noData"
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook: PR Review Event",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "jump-section-auto-fix"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "id": "action-check",
+              "leftValue": "={{ $json.body.action }}",
+              "rightValue": "submitted",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "gemini-check",
+              "leftValue": "={{ $json.body.review.user.login }}",
+              "rightValue": "gemini-code-assist[bot]",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "check-gemini-review",
+      "name": "IF: Gemini 리뷰인지 확인",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst pr = body.pull_request;\nconst review = body.review;\nconst repo = body.repository;\n\nreturn [{\n  json: {\n    prNumber: pr.number,\n    prTitle: pr.title,\n    prUrl: pr.html_url,\n    headBranch: pr.head.ref,\n    headSha: pr.head.sha,\n    repoOwner: repo.owner.login,\n    repoName: repo.name,\n    reviewBody: review.body || '',\n    reviewState: review.state,\n    reviewId: review.id\n  }\n}];"
+      },
+      "id": "extract-info",
+      "name": "PR 정보 추출",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $json.repoOwner }}/{{ $json.repoName }}/pulls/{{ $json.prNumber }}/comments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "per_page",
+              "value": "50"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-review-comments",
+      "name": "GitHub: 리뷰 인라인 코멘트 조회",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 200]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $('PR 정보 추출').first().json.repoOwner }}/{{ $('PR 정보 추출').first().json.repoName }}/pulls/{{ $('PR 정보 추출').first().json.prNumber }}/files",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "per_page",
+              "value": "30"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-pr-files",
+      "name": "GitHub: PR 변경 파일 조회",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const prInfo = $('PR 정보 추출').first().json;\nconst inlineComments = $('GitHub: 리뷰 인라인 코멘트 조회').all().map(i => i.json);\nconst prFiles = $('GitHub: PR 변경 파일 조회').all().map(f => f.json);\n\n// Gemini 인라인 코멘트 필터링\nconst geminiComments = inlineComments.filter(c =>\n  c.user && c.user.login === 'gemini-code-assist[bot]'\n);\n\n// 코멘트 텍스트 정리\nconst commentsText = geminiComments.length > 0\n  ? geminiComments.map(c => `📍 ${c.path} (line ${c.original_line || c.line || '?'}):\\n${c.body}`).join('\\n\\n')\n  : '(인라인 코멘트 없음)';\n\n// 변경 파일 목록\nconst filePaths = prFiles.map(f => f.filename);\n\n// 리뷰 전체 요약\nconst reviewSummary = [\n  `## Gemini 리뷰 요약\\n${prInfo.reviewBody || '(없음)'}`,\n  `## 인라인 코멘트\\n${commentsText}`\n].join('\\n\\n');\n\nreturn [{\n  json: {\n    ...prInfo,\n    reviewSummary,\n    filePaths,\n    hasComments: geminiComments.length > 0 || prInfo.reviewBody.length > 0\n  }\n}];"
+      },
+      "id": "prepare-context",
+      "name": "리뷰 컨텍스트 준비",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "has-comments",
+              "leftValue": "={{ $json.hasComments }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "id": "check-has-comments",
+      "name": "IF: 수정할 코멘트 있는지 확인",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// 변경된 파일들을 읽기 위해 각 파일 경로를 개별 아이템으로 분리\nconst ctx = $input.first().json;\nreturn ctx.filePaths.map(path => ({\n  json: {\n    path,\n    branch: ctx.headBranch,\n    repoOwner: ctx.repoOwner,\n    repoName: ctx.repoName,\n    // 전체 컨텍스트도 함께 전달\n    _ctx: ctx\n  }\n}));"
+      },
+      "id": "split-files",
+      "name": "파일 목록 분리",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://api.github.com/repos/{{ $json.repoOwner }}/{{ $json.repoName }}/contents/{{ $json.path }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "ref",
+              "value": "={{ $json.branch }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "read-files",
+      "name": "GitHub: 파일 내용 읽기",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const fileItems = $('GitHub: 파일 내용 읽기').all();\nconst splitItems = $('파일 목록 분리').all();\nconst ctx = splitItems[0].json._ctx;\n\nconst files = fileItems.map((item, i) => {\n  const content = Buffer.from((item.json.content || '').replace(/\\n/g, ''), 'base64').toString('utf8');\n  return {\n    path: item.json.path,\n    content,\n    sha: item.json.sha\n  };\n});\n\nconst filesContext = files.map(f =>\n  `### ${f.path}\\n\\`\\`\\`typescript\\n${f.content}\\n\\`\\`\\``\n).join('\\n\\n');\n\nconst userPrompt = `## PR #${ctx.prNumber}: ${ctx.prTitle}\\n브랜치: \\`${ctx.headBranch}\\`\\n\\n## Gemini 리뷰\\n${ctx.reviewSummary}\\n\\n---\\n\\n## 현재 코드\\n\\n${filesContext}\\n\\n---\\n\\nGemini 리뷰를 반영해서 코드를 수정하세요. 타당한 지적만 반영하고, 수정한 파일을 write_file 함수로 제출하세요.`;\n\nconst geminiPayload = {\n  system_instruction: {\n    parts: [{ text: 'TypeScript 전문 개발자입니다. Gemini의 코드 리뷰 코멘트를 바탕으로 코드를 수정합니다.\\n\\n규칙:\\n- Gemini 코멘트에서 타당한 지적만 수정 (스타일 의견은 기존 코드 스타일 우선)\\n- 기존 Public API 하위 호환성 유지\\n- Prettier 포맷 준수 (2sp, 세미콜론, 싱글쿼트, printWidth 100)\\n- 수정이 필요 없는 파일은 write_file 호출 생략\\n- 반드시 write_file 함수로 수정된 파일 제출' }]\n  },\n  contents: [{ role: 'user', parts: [{ text: userPrompt }] }],\n  tools: [{\n    functionDeclarations: [{\n      name: 'write_file',\n      description: '수정된 파일의 전체 내용을 제출합니다.',\n      parameters: {\n        type: 'OBJECT',\n        properties: {\n          path: { type: 'STRING', description: '파일 경로' },\n          content: { type: 'STRING', description: '파일 전체 내용' },\n          description: { type: 'STRING', description: '변경 설명' }\n        },\n        required: ['path', 'content', 'description']\n      }\n    }]\n  }],\n  toolConfig: { functionCallingConfig: { mode: 'AUTO' } },\n  generationConfig: { maxOutputTokens: 8192 }\n};\n\nreturn [{\n  json: {\n    ...ctx,\n    files,\n    geminiPayload\n  }\n}];"
+      },
+      "id": "decode-files",
+      "name": "파일 내용 디코딩",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.geminiPayload }}",
+        "options": {}
+      },
+      "id": "gemini-fix",
+      "name": "Gemini: 코드 수정",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2220, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst ctx = $('파일 내용 디코딩').first().json;\n\nconst parts = response.candidates[0].content.parts;\nconst functionCalls = parts.filter(p => p.functionCall && p.functionCall.name === 'write_file');\n\nif (functionCalls.length === 0) {\n  // 수정 필요 없음\n  return [{ json: { noChanges: true, ...ctx } }];\n}\n\nconst fixedFiles = functionCalls.map(p => {\n  const original = ctx.files.find(f => f.path === p.functionCall.args.path);\n  return {\n    path: p.functionCall.args.path,\n    content: p.functionCall.args.content,\n    description: p.functionCall.args.description,\n    sha: original?.sha || null\n  };\n});\n\nconst filesSummary = fixedFiles.map(f => `• \\`${f.path}\\`: ${f.description}`).join('\\n');\n\nreturn [{\n  json: {\n    noChanges: false,\n    fixedFiles,\n    filesSummary,\n    prNumber: ctx.prNumber,\n    prTitle: ctx.prTitle,\n    prUrl: ctx.prUrl,\n    headBranch: ctx.headBranch,\n    repoOwner: ctx.repoOwner,\n    repoName: ctx.repoName\n  }\n}];"
+      },
+      "id": "parse-fix",
+      "name": "수정 결과 파싱",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2440, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "has-changes",
+              "leftValue": "={{ $json.noChanges }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "false"
+              }
+            }
+          ]
+        }
+      },
+      "id": "check-has-changes",
+      "name": "IF: 수정된 파일 있는지 확인",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [2660, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nreturn data.fixedFiles.map(file => ({\n  json: {\n    ...file,\n    headBranch: data.headBranch,\n    prNumber: data.prNumber,\n    repoOwner: data.repoOwner,\n    repoName: data.repoName,\n    _summary: data.filesSummary\n  }\n}));"
+      },
+      "id": "split-fixed-files",
+      "name": "수정 파일 분리",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2880, 200]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.github.com/repos/{{ $json.repoOwner }}/{{ $json.repoName }}/contents/{{ $json.path }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"message\": \"fix: apply Gemini review suggestions - {{ $json.description }}\",\n  \"content\": \"{{ Buffer.from($json.content).toString('base64') }}\",\n  \"sha\": \"{{ $json.sha }}\",\n  \"branch\": \"{{ $json.headBranch }}\"\n}",
+        "options": {}
+      },
+      "id": "commit-fixes",
+      "name": "GitHub: 수정 커밋",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3100, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $('수정 결과 파싱').first().json.repoOwner }}/{{ $('수정 결과 파싱').first().json.repoName }}/issues/{{ $('수정 결과 파싱').first().json.prNumber }}/comments",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"body\": \"## 🤖 AI 자동 수정 완료\\n\\nGemini 리뷰 코멘트를 반영해서 코드를 수정했습니다.\\n\\n### 수정된 파일\\n{{ $('수정 결과 파싱').first().json.filesSummary }}\\n\\n---\\n*Gemini AI가 리뷰를 분석하여 자동 수정했습니다. 변경사항을 확인해주세요.*\"\n}",
+        "options": {}
+      },
+      "id": "post-pr-comment",
+      "name": "GitHub: PR 코멘트 게시",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3100, 400]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"embeds\": [\n    {\n      \"title\": \"🔧 Gemini 리뷰 기반 자동 수정 완료\",\n      \"description\": \"[PR #{{ $('수정 결과 파싱').first().json.prNumber }}: {{ $('수정 결과 파싱').first().json.prTitle }}]({{ $('수정 결과 파싱').first().json.prUrl }})\",\n      \"color\": 15105570,\n      \"fields\": [\n        {\n          \"name\": \"수정된 파일\",\n          \"value\": \"{{ $('수정 결과 파싱').first().json.filesSummary }}\",\n          \"inline\": false\n        },\n        {\n          \"name\": \"브랜치\",\n          \"value\": \"`{{ $('수정 결과 파싱').first().json.headBranch }}`\",\n          \"inline\": true\n        }\n      ],\n      \"footer\": { \"text\": \"jump-section AI Pipeline • Gemini 자동 수정\" },\n      \"timestamp\": \"{{ new Date().toISOString() }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "id": "discord-fix",
+      "name": "Discord: 자동 수정 알림",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [3320, 300]
+    }
+  ],
+  "connections": {
+    "Webhook: PR Review Event": {
+      "main": [
+        [
+          {
+            "node": "IF: Gemini 리뷰인지 확인",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Gemini 리뷰인지 확인": {
+      "main": [
+        [
+          {
+            "node": "PR 정보 추출",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PR 정보 추출": {
+      "main": [
+        [
+          {
+            "node": "GitHub: 리뷰 인라인 코멘트 조회",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "GitHub: PR 변경 파일 조회",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: 리뷰 인라인 코멘트 조회": {
+      "main": [
+        [
+          {
+            "node": "리뷰 컨텍스트 준비",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: PR 변경 파일 조회": {
+      "main": [
+        [
+          {
+            "node": "리뷰 컨텍스트 준비",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "리뷰 컨텍스트 준비": {
+      "main": [
+        [
+          {
+            "node": "IF: 수정할 코멘트 있는지 확인",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: 수정할 코멘트 있는지 확인": {
+      "main": [
+        [
+          {
+            "node": "파일 목록 분리",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "파일 목록 분리": {
+      "main": [
+        [
+          {
+            "node": "GitHub: 파일 내용 읽기",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: 파일 내용 읽기": {
+      "main": [
+        [
+          {
+            "node": "파일 내용 디코딩",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "파일 내용 디코딩": {
+      "main": [
+        [
+          {
+            "node": "Gemini: 코드 수정",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: 코드 수정": {
+      "main": [
+        [
+          {
+            "node": "수정 결과 파싱",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "수정 결과 파싱": {
+      "main": [
+        [
+          {
+            "node": "IF: 수정된 파일 있는지 확인",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: 수정된 파일 있는지 확인": {
+      "main": [
+        [
+          {
+            "node": "수정 파일 분리",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "GitHub: PR 코멘트 게시",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "수정 파일 분리": {
+      "main": [
+        [
+          {
+            "node": "GitHub: 수정 커밋",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: 수정 커밋": {
+      "main": [
+        [
+          {
+            "node": "Discord: 자동 수정 알림",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: PR 코멘트 게시": {
+      "main": [
+        [
+          {
+            "node": "Discord: 자동 수정 알림",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "jump-section"
+    },
+    {
+      "name": "auto-fix"
+    }
+  ]
+}
