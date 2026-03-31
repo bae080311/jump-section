@@ -2,6 +2,9 @@
 /dist
 .turbo
 **/dist
+# coverage
+coverage/
+
 # n8n
 .n8n/.env
 .n8n/n8n_data/
