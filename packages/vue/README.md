@@ -4,7 +4,7 @@
   <img src="https://raw.githubusercontent.com/bae080311/jump-section/main/docs/public/logo.png" alt="Jump Section Logo" width="200" />
 </div>
 
-Vue composables for jump-section scroll management. Easily add scroll-to-section navigation to your Vue 3 applications.
+Vue composables for jump-section scroll management.
 
 ## Installation
 
@@ -16,125 +16,141 @@ pnpm add @jump-section/vue
 yarn add @jump-section/vue
 ```
 
+## Requirements
+
+- Vue 3.0.0 or higher
+
 ## Usage
 
 ### Basic Example
 
 ```vue
-<script setup>
+<script setup lang="ts">
+import { ScrollSectionProvider } from '@jump-section/vue';
+import Navigation from './Navigation.vue';
+import Content from './Content.vue';
+</script>
+
+<template>
+  <ScrollSectionProvider :offset="-80" behavior="smooth">
+    <Navigation />
+    <Content />
+  </ScrollSectionProvider>
+</template>
+```
+
+**Navigation.vue**
+
+```vue
+<script setup lang="ts">
 import { useScrollSection } from '@jump-section/vue';
 
-// Initialize scroll manager with options
-const { scrollTo, activeId } = useScrollSection({
-  offset: -80,
-  behavior: 'smooth',
-});
+const { scrollTo, activeId } = useScrollSection();
+</script>
 
-// Register sections
+<template>
+  <nav>
+    <button @click="scrollTo('section-1')" :class="{ active: activeId === 'section-1' }">
+      Section 1
+    </button>
+    <button @click="scrollTo('section-2')" :class="{ active: activeId === 'section-2' }">
+      Section 2
+    </button>
+  </nav>
+</template>
+```
+
+**Content.vue**
+
+```vue
+<script setup lang="ts">
+import { useScrollSection } from '@jump-section/vue';
+
 const { registerRef: section1Ref } = useScrollSection('section-1');
 const { registerRef: section2Ref } = useScrollSection('section-2');
 </script>
 
 <template>
-  <div>
-    <nav>
-      <button @click="scrollTo('section-1')" :class="{ active: activeId === 'section-1' }">
-        Section 1
-      </button>
-      <button @click="scrollTo('section-2')" :class="{ active: activeId === 'section-2' }">
-        Section 2
-      </button>
-    </nav>
-
-    <main>
-      <section :ref="section1Ref">
-        <h2>Section 1</h2>
-        <p>Content for section 1...</p>
-      </section>
-      <section :ref="section2Ref">
-        <h2>Section 2</h2>
-        <p>Content for section 2...</p>
-      </section>
-    </main>
-  </div>
+  <main>
+    <section :ref="section1Ref"><h2>Section 1</h2></section>
+    <section :ref="section2Ref"><h2>Section 2</h2></section>
+  </main>
 </template>
 ```
 
-### With Active State
+### Scroll Progress
 
 ```vue
-<script setup>
-import { useScrollSection } from '@jump-section/vue';
+<script setup lang="ts">
+import { useScrollProgress } from '@jump-section/vue';
 
-const props = defineProps({
-  id: String,
-  title: String,
-});
-
-const { registerRef, isActive } = useScrollSection(props.id);
+const props = defineProps<{ id: string }>();
+const progress = useScrollProgress(props.id);
 </script>
 
 <template>
-  <section :ref="registerRef" :class="{ active: isActive }">
-    <h2>{{ title }}</h2>
-    <slot />
-  </section>
+  <div :style="{ width: `${progress * 100}%` }" />
 </template>
 ```
 
-### Composition API
+### Composition API (without `ScrollSectionProvider`)
 
 ```vue
-<script setup>
-import { useScrollSection } from '@jump-section/vue';
-import { watch } from 'vue';
+<script setup lang="ts">
+import { provideScrollManager, useScrollSection } from '@jump-section/vue';
 
-const { activeId, scrollTo } = useScrollSection({
-  offset: -100,
-  behavior: 'smooth',
-});
+// Call in the root component instead of using ScrollSectionProvider
+provideScrollManager({ offset: -80, behavior: 'smooth', hash: true });
 
-// Watch for active section changes
-watch(activeId, (newId) => {
-  console.log('Active section changed to:', newId);
-});
-
-// Programmatic scroll
-const handleClick = () => {
-  scrollTo('target-section');
-};
+const { activeId, scrollTo } = useScrollSection();
 </script>
 ```
 
 ## API
 
-### `useScrollSection(options?: ScrollOptions | string)`
+### `ScrollSectionProvider`
 
-Composable for managing scroll sections.
+Component that provides scroll management context to descendants.
 
-**Parameters:**
+**Props:**
 
-- `options?: ScrollOptions | string` - Configuration options or section ID
-  - If `string`: Section ID to register
-  - If `ScrollOptions`: Configuration object
-    - `offset?: number` - Vertical offset in pixels
-    - `behavior?: ScrollBehavior` - Scroll behavior: `'smooth'` | `'instant'` | `'auto'`
+| Prop       | Type                  | Default    | Description                                                |
+| ---------- | --------------------- | ---------- | ---------------------------------------------------------- |
+| `offset`   | `number`              | `0`        | Vertical offset in pixels (useful for fixed headers)       |
+| `behavior` | `ScrollBehavior`      | `'smooth'` | Scroll behavior: `'smooth'` \| `'instant'` \| `'auto'`     |
+| `hash`     | `boolean`             | `false`    | Sync active section with URL hash                          |
+| `keyboard` | `boolean`             | `false`    | Enable `Alt+ArrowDown` / `Alt+ArrowUp` keyboard navigation |
+| `root`     | `HTMLElement \| null` | `null`     | Custom scroll container (defaults to `window`)             |
+
+### `useScrollSection(sectionId?: string)`
+
+Composable for registering a section and accessing scroll controls.
 
 **Returns:**
 
-- `registerRef: (element: HTMLElement | null) => void` - Ref callback to register the section element
-- `scrollTo: (id: string) => void` - Function to scroll to a specific section
-- `activeId: Ref<string | null>` - Currently active section ID (reactive)
-- `isActive: ComputedRef<boolean>` - Whether this section is currently active (only if sectionId provided)
-- `manager: ScrollManager` - The underlying scroll manager instance
+| Property        | Type                                    | Description                                                                   |
+| --------------- | --------------------------------------- | ----------------------------------------------------------------------------- |
+| `registerRef`   | `(el: Element \| undefined) => void`    | Ref callback to register the section element                                  |
+| `scrollTo`      | `(id: string) => Promise<void>`         | Scroll to a specific section                                                  |
+| `scrollToNext`  | `() => Promise<void>`                   | Scroll to the next section                                                    |
+| `scrollToPrev`  | `() => Promise<void>`                   | Scroll to the previous section                                                |
+| `scrollToFirst` | `() => Promise<void>`                   | Scroll to the first section                                                   |
+| `scrollToLast`  | `() => Promise<void>`                   | Scroll to the last section                                                    |
+| `activeId`      | `Readonly<Ref<string \| null>>`         | Currently active section ID (reactive)                                        |
+| `isActive`      | `ComputedRef<boolean>`                  | Whether this section is active (only meaningful when `sectionId` is provided) |
+| `direction`     | `Readonly<Ref<'up' \| 'down' \| null>>` | Current scroll direction                                                      |
 
-## TypeScript
+### `useScrollProgress(sectionId: string): Readonly<Ref<number>>`
 
-This package includes TypeScript definitions.
+Returns a reactive scroll progress value (0–1) for a specific section.
 
-## Requirements
+### `provideScrollManager(options?: ScrollOptions): ScrollManager`
 
-- Vue 3.0.0 or higher
+Alternative to `ScrollSectionProvider` for Composition API usage. Call in a parent component's `setup` to provide a `ScrollManager` instance to all descendants.
+
+### `useScrollManager(): ScrollManager`
+
+Returns the underlying `ScrollManager` instance for advanced use cases.
 
 ## License
 
