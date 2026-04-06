@@ -227,6 +227,24 @@ pnpm format
 | `pnpm format`        | 코드 포맷팅 (prettier)    |
 | `pnpm check-exports` | 패키지 export 검증        |
 
+## AI Pipeline
+
+이 프로젝트는 n8n + Gemini 기반의 AI 파이프라인이 연동되어 있습니다.
+
+### 자동 수정 (auto-fix)
+
+Gemini Code Assist가 PR 리뷰를 제출하면 자동으로 실행됩니다. 리뷰 코멘트와 CI 실패를 분석해 수정 커밋을 올립니다.
+
+### PR 코멘트 커맨드 (comment-fix)
+
+PR 코멘트에 아래 커맨드를 입력하면 Gemini가 수정 커밋을 올립니다.
+
+| 커맨드       | 설명                                                         |
+| ------------ | ------------------------------------------------------------ |
+| `/fix-build` | CI 빌드/타입 에러 분석 후 수정                               |
+| `/fix-lint`  | PR 변경 파일에 Prettier 포맷 적용                            |
+| `/fix`       | 리뷰 코멘트에 답장으로 사용 — 해당 코멘트 내용을 반영해 수정 |
+
 ## Contributing
 
 Issue를 열거나 Pull Request를 보내주세요.
