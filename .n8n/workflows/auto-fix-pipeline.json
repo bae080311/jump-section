@@ -12,7 +12,10 @@
       "name": "Webhook: PR Review Event",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1.1,
-      "position": [240, 300],
+      "position": [
+        240,
+        300
+      ],
       "webhookId": "jump-section-auto-fix"
     },
     {
@@ -48,7 +51,10 @@
       "name": "IF: Gemini 리뷰인지 확인",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [460, 300]
+      "position": [
+        460,
+        300
+      ]
     },
     {
       "parameters": {
@@ -58,7 +64,10 @@
       "name": "PR 정보 추출",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [680, 300]
+      "position": [
+        680,
+        300
+      ]
     },
     {
       "parameters": {
@@ -96,7 +105,10 @@
       "name": "GitHub: 리뷰 인라인 코멘트 조회",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [900, 200]
+      "position": [
+        900,
+        200
+      ]
     },
     {
       "parameters": {
@@ -134,7 +146,10 @@
       "name": "GitHub: PR 변경 파일 조회",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [900, 400]
+      "position": [
+        900,
+        400
+      ]
     },
     {
       "parameters": {
@@ -144,7 +159,10 @@
       "name": "리뷰 컨텍스트 준비",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1120, 300]
+      "position": [
+        1120,
+        300
+      ]
     },
     {
       "parameters": {
@@ -166,7 +184,10 @@
       "name": "IF: 수정할 코멘트 있는지 확인",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1340, 300]
+      "position": [
+        1340,
+        300
+      ]
     },
     {
       "parameters": {
@@ -176,7 +197,10 @@
       "name": "파일 목록 분리",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1560, 300]
+      "position": [
+        1560,
+        300
+      ]
     },
     {
       "parameters": {
@@ -214,7 +238,10 @@
       "name": "GitHub: 파일 내용 읽기",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1780, 300]
+      "position": [
+        1780,
+        300
+      ]
     },
     {
       "parameters": {
@@ -224,7 +251,10 @@
       "name": "파일 내용 디코딩",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 300]
+      "position": [
+        2000,
+        300
+      ]
     },
     {
       "parameters": {
@@ -248,7 +278,10 @@
       "name": "Gemini: 코드 수정",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2220, 300]
+      "position": [
+        2220,
+        300
+      ]
     },
     {
       "parameters": {
@@ -258,7 +291,10 @@
       "name": "수정 결과 파싱",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2440, 300]
+      "position": [
+        2440,
+        300
+      ]
     },
     {
       "parameters": {
@@ -280,17 +316,23 @@
       "name": "IF: 수정된 파일 있는지 확인",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [2660, 300]
+      "position": [
+        2660,
+        300
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\nif (data.noChanges || !data.fixedFiles || data.fixedFiles.length === 0) return [];\nconst { fixedFiles, headBranch, repoOwner, repoName, filesSummary } = data;\nconst token = $env.GITHUB_TOKEN;\n\nconst headers = {\n  'Authorization': `Bearer ${token}`,\n  'Accept': 'application/vnd.github+json',\n  'X-GitHub-Api-Version': '2022-11-28',\n  'Content-Type': 'application/json',\n  'User-Agent': 'n8n-jump-section'\n};\n\nconst baseUrl = `https://api.github.com/repos/${repoOwner}/${repoName}`;\n\nfunction request(method, url, body) {\n  return new Promise((resolve, reject) => {\n    const https = require('https');\n    const path = url.replace('https://api.github.com', '');\n    const options = { hostname: 'api.github.com', path, method, headers };\n    const req = https.request(options, (res) => {\n      let d = '';\n      res.on('data', chunk => d += chunk);\n      res.on('end', () => {\n        if (res.statusCode >= 400) reject(new Error(`HTTP ${res.statusCode}: ${d}`));\n        else resolve(JSON.parse(d));\n      });\n    });\n    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Request timeout')); });\n    req.on('error', reject);\n    if (body) req.write(JSON.stringify(body));\n    req.end();\n  });\n}\n\n// 1. HEAD SHA\nconst refData = await request('GET', `${baseUrl}/git/refs/heads/${headBranch}`);\nconst baseSha = refData.object.sha;\n\n// 2. 현재 트리 SHA\nconst commitData = await request('GET', `${baseUrl}/git/commits/${baseSha}`);\nconst baseTreeSha = commitData.tree.sha;\n\n// 3. 새 트리 생성 (모든 파일 한번에)\nconst newTree = await request('POST', `${baseUrl}/git/trees`, {\n  base_tree: baseTreeSha,\n  tree: fixedFiles.map(f => ({ path: f.path, mode: '100644', type: 'blob', content: f.content }))\n});\n\n// 4. 커밋 생성\nconst newCommit = await request('POST', `${baseUrl}/git/commits`, {\n  message: `fix: apply Gemini review suggestions\\n\\n${filesSummary}`,\n  tree: newTree.sha,\n  parents: [baseSha]\n});\n\n// 5. 브랜치 ref 업데이트\nawait request('PATCH', `${baseUrl}/git/refs/heads/${headBranch}`, { sha: newCommit.sha });\n\nreturn [{ json: { ...data, commitSha: newCommit.sha } }];"
+        "jsCode": "const data = $input.first().json;\nif (data.noChanges || !data.fixedFiles || data.fixedFiles.length === 0) return [];\nconst fixedFiles = data.fixedFiles.filter(f => f.path && f.content && f.content.trim().length > 0);\nif (fixedFiles.length === 0) return [];\nconst { headBranch, repoOwner, repoName, filesSummary } = data;\nconst token = $env.GITHUB_TOKEN;\n\nconst headers = {\n  'Authorization': `Bearer ${token}`,\n  'Accept': 'application/vnd.github+json',\n  'X-GitHub-Api-Version': '2022-11-28',\n  'Content-Type': 'application/json',\n  'User-Agent': 'n8n-jump-section'\n};\n\nconst baseUrl = `https://api.github.com/repos/${repoOwner}/${repoName}`;\n\nfunction request(method, url, body) {\n  return new Promise((resolve, reject) => {\n    const https = require('https');\n    const path = url.replace('https://api.github.com', '');\n    const options = { hostname: 'api.github.com', path, method, headers };\n    const req = https.request(options, (res) => {\n      let d = '';\n      res.on('data', chunk => d += chunk);\n      res.on('end', () => {\n        if (res.statusCode >= 400) reject(new Error(`HTTP ${res.statusCode}: ${d}`));\n        else resolve(JSON.parse(d));\n      });\n    });\n    req.setTimeout(15000, () => { req.destroy(); reject(new Error('Request timeout')); });\n    req.on('error', reject);\n    if (body) req.write(JSON.stringify(body));\n    req.end();\n  });\n}\n\n// 1. HEAD SHA\nconst refData = await request('GET', `${baseUrl}/git/refs/heads/${headBranch}`);\nconst baseSha = refData.object.sha;\n\n// 2. 현재 트리 SHA\nconst commitData = await request('GET', `${baseUrl}/git/commits/${baseSha}`);\nconst baseTreeSha = commitData.tree.sha;\n\n// 3. 새 트리 생성 (모든 파일 한번에)\nconst newTree = await request('POST', `${baseUrl}/git/trees`, {\n  base_tree: baseTreeSha,\n  tree: fixedFiles.map(f => ({ path: f.path, mode: '100644', type: 'blob', content: f.content }))\n});\n\n// 4. 커밋 생성\nconst newCommit = await request('POST', `${baseUrl}/git/commits`, {\n  message: `fix: apply Gemini review suggestions\\n\\n${filesSummary}`,\n  tree: newTree.sha,\n  parents: [baseSha]\n});\n\n// 5. 브랜치 ref 업데이트\nawait request('PATCH', `${baseUrl}/git/refs/heads/${headBranch}`, { sha: newCommit.sha });\n\nreturn [{ json: { ...data, commitSha: newCommit.sha } }];"
       },
       "id": "commit-fixes",
       "name": "GitHub: Trees API 커밋",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2880, 200]
+      "position": [
+        2880,
+        200
+      ]
     },
     {
       "parameters": {
@@ -326,7 +368,10 @@
       "name": "GitHub: PR 코멘트 게시",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3100, 400]
+      "position": [
+        3100,
+        400
+      ]
     },
     {
       "parameters": {
@@ -341,7 +386,10 @@
       "name": "Discord: 자동 수정 알림",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [3320, 300]
+      "position": [
+        3320,
+        300
+      ]
     }
   ],
   "connections": {
