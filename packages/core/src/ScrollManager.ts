@@ -35,7 +35,6 @@ export class ScrollManager {
   private scrollHandler: (() => void) | null = null;
   private popstateHandler: (() => void) | null = null;
   private notifyScheduled: boolean = false;
-  private intersectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: ScrollOptions = {}) {
     this.options = {
@@ -135,43 +134,34 @@ export class ScrollManager {
   }
 
   private handleIntersection = (entries: IntersectionObserverEntry[]) => {
-    // 디바운스를 적용하여 짧은 시간 내에 발생하는 IntersectionObserver 콜백을 처리합니다.
-    // 이는 애니메이션 깜빡임이나 급격한 상태 변화를 줄이는 데 도움이 됩니다.
-    if (this.intersectionTimeout) {
-      clearTimeout(this.intersectionTimeout);
+    const visibleEntries = entries.filter((e) => e.isIntersecting);
+
+    if (visibleEntries.length === 0) {
+      // 모든 섹션이 뷰포트 밖으로 벗어났을 때 비활성 상태로 전환
+      if (this.activeId !== null) {
+        this.previousId = this.activeId;
+        this.activeId = null;
+        this.scheduleNotify();
+      }
+      return;
     }
 
-    this.intersectionTimeout = setTimeout(() => {
-      const visibleEntries = entries.filter((e) => e.isIntersecting);
+    const best = visibleEntries.reduce((prev, current) =>
+      prev.intersectionRatio > current.intersectionRatio ? prev : current,
+    );
 
-      if (visibleEntries.length === 0) {
-        // 모든 섹션이 뷰포트 밖으로 벗어났을 때, activeId를 null로 설정하고 알립니다.
-        // 이는 Hero Section과 같이 특정 섹션이 뷰포트에 없을 때 비활성 상태를 명확히 합니다.
-        if (this.activeId !== null) {
-          this.previousId = this.activeId;
-          this.activeId = null;
-          this.scheduleNotify();
-        }
-        return;
-      }
+    const entry = [...this.sections.entries()].find(([, el]) => el === best.target);
+    const id = entry?.[0] ?? best.target.id;
 
-      const best = visibleEntries.reduce((prev, current) =>
-        prev.intersectionRatio > current.intersectionRatio ? prev : current,
-      );
+    if (!id || id === this.activeId || this.disabledSections.has(id)) return;
 
-      const entry = [...this.sections.entries()].find(([, el]) => el === best.target);
-      const id = entry?.[0] ?? best.target.id;
+    this.previousId = this.activeId;
+    this.activeId = id;
+    this.scheduleNotify();
 
-      if (!id || id === this.activeId || this.disabledSections.has(id)) return;
-
-      this.previousId = this.activeId;
-      this.activeId = id;
-      this.scheduleNotify();
-
-      if (this.options.hash) {
-        history.replaceState(null, '', `#${id}`);
-      }
-    }, 100); // 100ms 디바운스 시간
+    if (this.options.hash) {
+      history.replaceState(null, '', `#${id}`);
+    }
   };
 
   private scheduleNotify() {
@@ -286,7 +276,7 @@ export class ScrollManager {
       console.warn(
         `[ScrollManager] Section with id "${id}" not found. Available sections: ${Array.from(this.sections.keys()).join(', ')}`,
       );
-      return Promise.reject(new Error(`Section with id "${id}" not found.`));
+      return Promise.resolve();
     }
 
     const elementRect = element.getBoundingClientRect();
@@ -420,9 +410,6 @@ export class ScrollManager {
     }
     if (this.keyboardHandler) {
       document.removeEventListener('keydown', this.keyboardHandler);
-    }
-    if (this.intersectionTimeout) {
-      clearTimeout(this.intersectionTimeout);
     }
   }
 }
