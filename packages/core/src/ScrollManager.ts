@@ -72,7 +72,7 @@ export class ScrollManager {
     this.observer = new IntersectionObserver(this.handleIntersection, {
       root: this.options.root ?? null,
       rootMargin: '-20% 0px -60% 0px',
-      threshold: [0, 0.1, 0.5, 1,],
+      threshold: [0, 0.1, 0.5, 1],
     });
 
     if (typeof ResizeObserver !== 'undefined') {
@@ -282,7 +282,7 @@ export class ScrollManager {
     }
 
     const elementRect = element.getBoundingClientRect();
-    const rootRect = this.options.root?.getBoundingClientRect() || { top: 0, left: 0, };
+    const rootRect = this.options.root?.getBoundingClientRect() || { top: 0, left: 0 };
 
     const targetScrollTop =
       elementRect.top + this.currentScrollTop - rootRect.top + this.options.offset;
@@ -305,7 +305,7 @@ export class ScrollManager {
       };
 
       if (this.options.behavior === 'smooth') {
-        scrollTarget.addEventListener('scroll', scrollHandler, { passive: true, });
+        scrollTarget.addEventListener('scroll', scrollHandler, { passive: true });
       } else {
         resolve(); // 'auto' behavior resolves immediately
       }
@@ -362,14 +362,14 @@ export class ScrollManager {
   public onActiveChange(callback: ActiveChangeCallback): () => void {
     this.listeners.add(callback);
     // 즉시 현재 활성 섹션 상태를 전달
-    callback(this.activeId, { previous: this.previousId, direction: this.scrollDirection, });
+    callback(this.activeId, { previous: this.previousId, direction: this.scrollDirection });
     return () => {
       this.listeners.delete(callback);
     };
   }
 
   private notifyListeners() {
-    const meta: ActiveChangeMeta = { previous: this.previousId, direction: this.scrollDirection, };
+    const meta: ActiveChangeMeta = { previous: this.previousId, direction: this.scrollDirection };
     this.listeners.forEach((listener) => listener(this.activeId, meta));
   }
 
