@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd /Users/bae/jump-section && pnpm format 2>&1 | tail -5"
+            "command": "pnpm format 2>&1 | tail -5"
           }
         ]
       }
