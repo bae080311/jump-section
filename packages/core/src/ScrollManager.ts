@@ -150,8 +150,14 @@ export class ScrollManager {
       prev.intersectionRatio > current.intersectionRatio ? prev : current,
     );
 
-    const entry = [...this.sections.entries()].find(([, el]) => el === best.target);
-    const id = entry?.[0] ?? best.target.id;
+    let id: string | undefined;
+    for (const [sectionId, el] of this.sections) {
+      if (el === best.target) {
+        id = sectionId;
+        break;
+      }
+    }
+    id = id ?? best.target.id;
 
     if (!id || id === this.activeId || this.disabledSections.has(id)) return;
 
@@ -300,13 +306,21 @@ export class ScrollManager {
               this.options.root.scrollHeight) // End of root scrollable element
         ) {
           scrollTarget.removeEventListener('scroll', scrollHandler);
+          clearTimeout(safetyTimeout);
           resolve();
         }
       };
 
+      // 스크롤이 완료되지 않는 경우를 대비한 안전 타임아웃
+      const safetyTimeout = setTimeout(() => {
+        scrollTarget.removeEventListener('scroll', scrollHandler);
+        resolve();
+      }, 1000);
+
       if (this.options.behavior === 'smooth') {
         scrollTarget.addEventListener('scroll', scrollHandler, { passive: true });
       } else {
+        clearTimeout(safetyTimeout);
         resolve(); // 'auto' behavior resolves immediately
       }
 
