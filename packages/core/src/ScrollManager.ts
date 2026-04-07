@@ -374,12 +374,7 @@ export class ScrollManager {
   }
 
   /** 특정 섹션의 스크롤 진행률 이벤트를 구독합니다 */
-  public onProgressChange(sectionId: string, callback: ProgressCallback) {
-    return this.onProgress(sectionId, callback);
-  }
-
-  /** 특정 섹션의 스크롤 진행률 이벤트를 구독합니다 */
-  public onProgress(sectionId: string, callback: ProgressCallback) {
+  public onProgressChange(sectionId: string, callback: ProgressCallback): () => void {
     if (!this.progressListeners.has(sectionId)) {
       this.progressListeners.set(sectionId, new Set());
     }
