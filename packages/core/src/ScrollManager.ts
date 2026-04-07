@@ -7,6 +7,8 @@ export interface ScrollOptions {
   root?: HTMLElement | null;
   /** Alt+ArrowDown/Up 키보드 네비게이션을 활성화합니다 */
   keyboard?: boolean;
+  /** 디버그 모드를 활성화하여 섹션 경계 및 상태를 시각화합니다 */
+  debug?: boolean;
 }
 
 export interface ActiveChangeMeta {
@@ -35,6 +37,7 @@ export class ScrollManager {
   private scrollHandler: (() => void) | null = null;
   private popstateHandler: (() => void) | null = null;
   private notifyScheduled: boolean = false;
+  private debugElements: Map<string, HTMLDivElement> = new Map();
 
   constructor(options: ScrollOptions = {}) {
     this.options = {
@@ -43,6 +46,7 @@ export class ScrollManager {
       hash: false,
       root: null,
       keyboard: false,
+      debug: false,
       ...options,
     };
     this.initObserver();
@@ -134,6 +138,10 @@ export class ScrollManager {
   }
 
   private handleIntersection = (entries: IntersectionObserverEntry[]) => {
+    if (this.options.debug) {
+      this.updateDebugOverlays(entries);
+    }
+
     const visibleEntries = entries.filter((e) => e.isIntersecting);
 
     if (visibleEntries.length === 0) {
@@ -176,6 +184,9 @@ export class ScrollManager {
     queueMicrotask(() => {
       this.notifyScheduled = false;
       this.notifyListeners();
+      if (this.options.debug) {
+        this.updateDebugActiveState();
+      }
     });
   }
 
@@ -203,7 +214,115 @@ export class ScrollManager {
     });
   }
 
-  /** 섹션을 등록하고 IntersectionObserver로 감시합니다 */
+  private createDebugOverlay(id: string, element: HTMLElement): HTMLDivElement {
+    const overlay = document.createElement('div');
+    overlay.id = `jump-section-debug-${id}`;
+    overlay.style.cssText = ` 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      pointer-events: none; 
+      box-sizing: border-box; 
+      border: 2px solid rgba(0, 100, 255, 0.5); 
+      background: rgba(0, 100, 255, 0.1); 
+      z-index: 9999; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-family: monospace; 
+      font-size: 12px; 
+      color: white; 
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8); 
+      overflow: hidden; 
+    `;
+    element.style.position =
+      element.style.position === 'static' ? 'relative' : element.style.position;
+
+    const label = document.createElement('span');
+    label.style.cssText = ` 
+      padding: 2px 5px; 
+      background: rgba(0, 100, 255, 0.7); 
+      border-radius: 3px; 
+    `;
+    label.textContent = `ID: ${id}`;
+    overlay.appendChild(label);
+
+    return overlay;
+  }
+
+  private updateDebugOverlays(entries: IntersectionObserverEntry[]) {
+    entries.forEach((entry) => {
+      const element = entry.target as HTMLElement;
+      const id = [...this.sections.entries()].find(([, el]) => el === element)?.[0] ?? element.id;
+      if (!id) return;
+
+      let overlay = this.debugElements.get(id);
+      if (!overlay) {
+        overlay = this.createDebugOverlay(id, element);
+        element.appendChild(overlay);
+        this.debugElements.set(id, overlay);
+      }
+
+      const ratio = Math.round(entry.intersectionRatio * 100);
+      const isActive = id === this.activeId;
+
+      overlay.style.borderColor = isActive
+        ? 'rgba(0, 255, 0, 0.8)'
+        : entry.isIntersecting
+          ? 'rgba(255, 165, 0, 0.8)'
+          : 'rgba(0, 100, 255, 0.5)';
+      overlay.style.background = isActive
+        ? 'rgba(0, 255, 0, 0.1)'
+        : entry.isIntersecting
+          ? 'rgba(255, 165, 0, 0.1)'
+          : 'rgba(0, 100, 255, 0.1)';
+
+      const label = overlay.querySelector('span') as HTMLSpanElement;
+      if (label) {
+        label.textContent = `ID: ${id} | Ratio: ${ratio}% ${isActive ? '| ACTIVE' : ''}`;
+        label.style.background = isActive
+          ? 'rgba(0, 255, 0, 0.7)'
+          : entry.isIntersecting
+            ? 'rgba(255, 165, 0, 0.7)'
+            : 'rgba(0, 100, 255, 0.7)';
+      }
+    });
+  }
+
+  private updateDebugActiveState() {
+    this.debugElements.forEach((overlay, id) => {
+      const isActive = id === this.activeId;
+      const label = overlay.querySelector('span') as HTMLSpanElement;
+      const currentText = label.textContent || '';
+      const newText = isActive
+        ? currentText.includes('| ACTIVE')
+          ? currentText
+          : `${currentText} | ACTIVE`
+        : currentText.replace(' | ACTIVE', '');
+
+      if (label) {
+        label.textContent = newText;
+        label.style.background = isActive ? 'rgba(0, 255, 0, 0.7)' : 'rgba(0, 100, 255, 0.7)';
+      }
+      overlay.style.borderColor = isActive ? 'rgba(0, 255, 0, 0.8)' : 'rgba(0, 100, 255, 0.5)';
+      overlay.style.background = isActive ? 'rgba(0, 255, 0, 0.1)' : 'rgba(0, 100, 255, 0.1)';
+    });
+  }
+
+  private removeDebugOverlay(id: string) {
+    const overlay = this.debugElements.get(id);
+    if (overlay) {
+      overlay.remove();
+      this.debugElements.delete(id);
+    }
+  }
+
+  /**
+   * 섹션을 등록하고 IntersectionObserver로 감시합니다.
+   * @note `debug: true` 옵션 활성화 시, 오버레이 표시를 위해 `position` 스타일이 `relative`로 변경될 수 있습니다.
+   */
   public registerSection(id: string, element: HTMLElement) {
     if (typeof window === 'undefined') return;
     if (!element) return;
@@ -216,6 +335,12 @@ export class ScrollManager {
 
     this.observer?.observe(element);
     this.resizeObserver?.observe(element);
+
+    if (this.options.debug) {
+      const overlay = this.createDebugOverlay(id, element);
+      element.appendChild(overlay);
+      this.debugElements.set(id, overlay);
+    }
 
     // hash 옵션: 현재 URL hash와 일치하면 해당 섹션으로 스크롤
     if (this.options.hash && window.location.hash === `#${id}`) {
@@ -233,6 +358,9 @@ export class ScrollManager {
     this.sections.delete(id);
     this.disabledSections.delete(id);
     this.progressListeners.delete(id);
+    if (this.options.debug) {
+      this.removeDebugOverlay(id);
+    }
 
     if (this.activeId === id) {
       this.previousId = this.activeId;
@@ -244,6 +372,16 @@ export class ScrollManager {
   /** 특정 섹션을 활성 감지에서 일시적으로 제외합니다 */
   public disableSection(id: string) {
     this.disabledSections.add(id);
+    if (this.options.debug) {
+      const overlay = this.debugElements.get(id);
+      if (overlay) {
+        overlay.style.borderStyle = 'dashed';
+        const label = overlay.querySelector('span');
+        if (label && !label.textContent?.includes('| DISABLED')) {
+          label.textContent += ' | DISABLED';
+        }
+      }
+    }
     if (this.activeId === id) {
       this.previousId = this.activeId;
       this.activeId = null;
@@ -254,6 +392,16 @@ export class ScrollManager {
   /** 비활성화된 섹션을 다시 활성 감지에 포함시킵니다 */
   public enableSection(id: string) {
     this.disabledSections.delete(id);
+    if (this.options.debug) {
+      const overlay = this.debugElements.get(id);
+      if (overlay) {
+        overlay.style.borderStyle = 'solid';
+        const label = overlay.querySelector('span');
+        if (label) {
+          label.textContent = label.textContent?.replace(' | DISABLED', '') || '';
+        }
+      }
+    }
   }
 
   /** 실제 DOM 위치 기준으로 정렬된 섹션 ID 목록을 반환합니다 */
@@ -321,7 +469,7 @@ export class ScrollManager {
         scrollTarget.addEventListener('scroll', scrollHandler, { passive: true });
       } else {
         clearTimeout(safetyTimeout);
-        resolve(); // 'auto' behavior resolves immediately
+        resolve(); // 'auto' or 'instant' behavior resolves immediately
       }
 
       if (this.options.root) {
@@ -343,6 +491,7 @@ export class ScrollManager {
     const sortedSections = this.getSections();
     const currentIndex = this.activeId ? sortedSections.indexOf(this.activeId) : -1;
     const nextIndex = currentIndex + 1;
+
     if (nextIndex < sortedSections.length) {
       return this.scrollTo(sortedSections[nextIndex]);
     }
@@ -352,8 +501,11 @@ export class ScrollManager {
   /** 이전 섹션으로 스크롤합니다 */
   public scrollToPrev(): Promise<void> {
     const sortedSections = this.getSections();
-    const currentIndex = this.activeId ? sortedSections.indexOf(this.activeId) : -1;
+    const currentIndex = this.activeId
+      ? sortedSections.indexOf(this.activeId)
+      : sortedSections.length;
     const prevIndex = currentIndex - 1;
+
     if (prevIndex >= 0) {
       return this.scrollTo(sortedSections[prevIndex]);
     }
@@ -362,14 +514,20 @@ export class ScrollManager {
 
   /** 첫 번째 섹션으로 스크롤합니다 */
   public scrollToFirst(): Promise<void> {
-    const ordered = this.getSections();
-    return ordered.length > 0 ? this.scrollTo(ordered[0]) : Promise.resolve();
+    const sortedSections = this.getSections();
+    if (sortedSections.length > 0) {
+      return this.scrollTo(sortedSections[0]);
+    }
+    return Promise.resolve();
   }
 
   /** 마지막 섹션으로 스크롤합니다 */
   public scrollToLast(): Promise<void> {
-    const ordered = this.getSections();
-    return ordered.length > 0 ? this.scrollTo(ordered[ordered.length - 1]) : Promise.resolve();
+    const sortedSections = this.getSections();
+    if (sortedSections.length > 0) {
+      return this.scrollTo(sortedSections[sortedSections.length - 1]);
+    }
+    return Promise.resolve();
   }
 
   /** 활성 섹션 변경 이벤트를 구독합니다 */
@@ -382,7 +540,14 @@ export class ScrollManager {
     };
   }
 
+  /** 활성 섹션 변경 구독을 해제합니다 */
+  public offActiveChange(callback: ActiveChangeCallback) {
+    this.listeners.delete(callback);
+  }
+
   private notifyListeners() {
+    if (this.activeId === null && this.previousId === null) return;
+
     const meta: ActiveChangeMeta = { previous: this.previousId, direction: this.scrollDirection };
     this.listeners.forEach((listener) => listener(this.activeId, meta));
   }
@@ -400,6 +565,14 @@ export class ScrollManager {
     };
   }
 
+  /** 특정 섹션의 스크롤 진행률 구독을 해제합니다 */
+  public offProgressChange(sectionId: string, callback: ProgressCallback) {
+    this.progressListeners.get(sectionId)?.delete(callback);
+    if (this.progressListeners.get(sectionId)?.size === 0) {
+      this.progressListeners.delete(sectionId);
+    }
+  }
+
   /** 등록된 모든 이벤트 리스너와 Observer를 해제하고 정리합니다 */
   public destroy() {
     this.observer?.disconnect();
@@ -412,6 +585,8 @@ export class ScrollManager {
     this.disabledSections.clear();
     this.listeners.clear();
     this.progressListeners.clear();
+    this.debugElements.forEach((overlay) => overlay.remove());
+    this.debugElements.clear();
 
     if (this.scrollHandler) {
       this.scrollRoot.removeEventListener('scroll', this.scrollHandler as EventListener);
