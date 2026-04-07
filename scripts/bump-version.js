@@ -16,11 +16,11 @@ function updatePackageVersion(packagePath, newVersion) {
   const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
   const oldVersion = packageJson.version;
   packageJson.version = newVersion;
-  
+
   // react/vue는 core 의존성을 변경하지 않고 유지
   // (^1.0.1 같은 범위는 1.0.x 버전 모두를 포함하므로 새 버전도 자동으로 포함됨)
   // lockfile 업데이트 시 npm에 아직 발행되지 않은 버전을 참조하는 것을 방지
-  
+
   fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n');
   return oldVersion;
 }

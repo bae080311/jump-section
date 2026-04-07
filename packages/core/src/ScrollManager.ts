@@ -144,20 +144,28 @@ export class ScrollManager {
 
     const visibleEntries = entries.filter((e) => e.isIntersecting);
 
-    if (visibleEntries.length === 0) return;
+    if (visibleEntries.length === 0) {
+      // 모든 섹션이 뷰포트 밖으로 벗어났을 때 비활성 상태로 전환
+      if (this.activeId !== null) {
+        this.previousId = this.activeId;
+        this.activeId = null;
+        this.scheduleNotify();
+      }
+      return;
+    }
 
     const best = visibleEntries.reduce((prev, current) =>
       prev.intersectionRatio > current.intersectionRatio ? prev : current,
     );
 
-    // element.id 대신 sections Map에서 id 역조회 (id와 element.id가 다를 수 있음)
-    let id = best.target.id;
-    for (const [sectionId, el] of this.sections.entries()) {
+    let id: string | undefined;
+    for (const [sectionId, el] of this.sections) {
       if (el === best.target) {
         id = sectionId;
         break;
       }
     }
+    id = id ?? best.target.id;
 
     if (!id || id === this.activeId || this.disabledSections.has(id)) return;
 
@@ -420,29 +428,52 @@ export class ScrollManager {
     const element = this.sections.get(id);
     if (!element) {
       console.warn(
-        `[ScrollManager] Section with id "${id}" not found. Available sections: ${Array.from(this.sections.keys()).join(', ')}`,
+        `[ScrollManager] Section with id "${id}" not found. Available sections: ${Array.from(
+          this.sections.keys(),
+        ).join(', ')}`,
       );
       return Promise.resolve();
     }
 
-    return new Promise((resolve) => {
-      const targetScrollTop =
-        element.getBoundingClientRect().top + this.currentScrollTop + this.options.offset;
+    const elementRect = element.getBoundingClientRect();
+    const rootRect = this.options.root?.getBoundingClientRect() || { top: 0, left: 0 };
 
-      const rootElement = this.options.root;
-      const scrollContainer = rootElement ?? window;
+    const targetScrollTop =
+      elementRect.top + this.currentScrollTop - rootRect.top + this.options.offset;
 
-      const onScrollEnd = () => {
-        scrollContainer.removeEventListener('scroll', onScrollEnd);
-        resolve();
+    const scrollTarget = this.options.root || window;
+
+    return new Promise<void>((resolve) => {
+      const scrollHandler = () => {
+        if (
+          Math.abs(this.currentScrollTop - targetScrollTop) < 1 ||
+          (scrollTarget === window &&
+            window.innerHeight + window.scrollY >= document.body.offsetHeight) || // End of page
+          (this.options.root &&
+            this.options.root.clientHeight + this.options.root.scrollTop >=
+              this.options.root.scrollHeight) // End of root scrollable element
+        ) {
+          scrollTarget.removeEventListener('scroll', scrollHandler);
+          clearTimeout(safetyTimeout);
+          resolve();
+        }
       };
 
-      // 스크롤 이벤트 리스너가 중복 등록되지 않도록 방지
-      scrollContainer.removeEventListener('scroll', onScrollEnd);
-      scrollContainer.addEventListener('scroll', onScrollEnd, { passive: true });
+      // 스크롤이 완료되지 않는 경우를 대비한 안전 타임아웃
+      const safetyTimeout = setTimeout(() => {
+        scrollTarget.removeEventListener('scroll', scrollHandler);
+        resolve();
+      }, 1000);
 
-      if (rootElement) {
-        rootElement.scrollTo({
+      if (this.options.behavior === 'smooth') {
+        scrollTarget.addEventListener('scroll', scrollHandler, { passive: true });
+      } else {
+        clearTimeout(safetyTimeout);
+        resolve(); // 'auto' or 'instant' behavior resolves immediately
+      }
+
+      if (this.options.root) {
+        this.options.root.scrollTo({
           top: targetScrollTop,
           behavior: this.options.behavior,
         });
@@ -451,12 +482,6 @@ export class ScrollManager {
           top: targetScrollTop,
           behavior: this.options.behavior,
         });
-      }
-
-      // behavior가 'auto'일 경우 scroll 이벤트가 발생하지 않을 수 있으므로,
-      // 일정 시간 후 강제로 resolve
-      if (this.options.behavior === 'auto' || this.options.behavior === 'instant') {
-        setTimeout(onScrollEnd, 100);
       }
     });
   }
@@ -505,9 +530,10 @@ export class ScrollManager {
     return Promise.resolve();
   }
 
-  /** 활성 섹션 변경을 구독합니다 */
+  /** 활성 섹션 변경 이벤트를 구독합니다 */
   public onActiveChange(callback: ActiveChangeCallback): () => void {
     this.listeners.add(callback);
+    // 즉시 현재 활성 섹션 상태를 전달
     callback(this.activeId, { previous: this.previousId, direction: this.scrollDirection });
     return () => {
       this.listeners.delete(callback);
@@ -522,46 +548,43 @@ export class ScrollManager {
   private notifyListeners() {
     if (this.activeId === null && this.previousId === null) return;
 
-    const meta: ActiveChangeMeta = {
-      previous: this.previousId,
-      direction: this.scrollDirection,
-    };
-
-    this.listeners.forEach((callback) => callback(this.activeId, meta));
+    const meta: ActiveChangeMeta = { previous: this.previousId, direction: this.scrollDirection };
+    this.listeners.forEach((listener) => listener(this.activeId, meta));
   }
 
-  /**
-   * 특정 섹션의 스크롤 진행률 변화를 구독합니다.
-   * 진행률은 섹션이 뷰포트 하단(0)에서 상단(1)으로 이동하는 정도를 나타냅니다.
-   */
-  public onProgressChange(id: string, callback: ProgressCallback): () => void {
-    if (!this.progressListeners.has(id)) {
-      this.progressListeners.set(id, new Set());
+  /** 특정 섹션의 스크롤 진행률 이벤트를 구독합니다 */
+  public onProgressChange(sectionId: string, callback: ProgressCallback): () => void {
+    if (!this.progressListeners.has(sectionId)) {
+      this.progressListeners.set(sectionId, new Set());
     }
-    this.progressListeners.get(id)?.add(callback);
-    // 즉시 현재 진행률을 한 번 호출하여 초기 상태 동기화
-    queueMicrotask(() => this.updateProgress());
+    this.progressListeners.get(sectionId)?.add(callback);
+    // 즉시 현재 진행률 상태를 전달
+    this.updateProgress();
     return () => {
-      this.progressListeners.get(id)?.delete(callback);
+      this.progressListeners.get(sectionId)?.delete(callback);
     };
   }
 
   /** 특정 섹션의 스크롤 진행률 구독을 해제합니다 */
-  public offProgressChange(id: string, callback: ProgressCallback) {
-    this.progressListeners.get(id)?.delete(callback);
-    if (this.progressListeners.get(id)?.size === 0) {
-      this.progressListeners.delete(id);
+  public offProgressChange(sectionId: string, callback: ProgressCallback) {
+    this.progressListeners.get(sectionId)?.delete(callback);
+    if (this.progressListeners.get(sectionId)?.size === 0) {
+      this.progressListeners.delete(sectionId);
     }
   }
 
-  /** 모든 리스너를 해제하고 Observer 연결을 끊습니다 */
+  /** 등록된 모든 이벤트 리스너와 Observer를 해제하고 정리합니다 */
   public destroy() {
     this.observer?.disconnect();
     this.resizeObserver?.disconnect();
-    this.listeners.clear();
-    this.progressListeners.clear();
+    this.sections.forEach((element) => {
+      this.observer?.unobserve(element);
+      this.resizeObserver?.unobserve(element);
+    });
     this.sections.clear();
     this.disabledSections.clear();
+    this.listeners.clear();
+    this.progressListeners.clear();
     this.debugElements.forEach((overlay) => overlay.remove());
     this.debugElements.clear();
 

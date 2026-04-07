@@ -9,11 +9,11 @@
 
 ## Props
 
-| Prop | 타입 | 필수 | 설명 |
-|------|------|------|------|
-| `id` | `string` | 예 | 섹션의 고유 식별자 (`scrollTo(id)` 및 활성 섹션 감지에 사용). |
-| `as` | `ElementType` | 아니오 | 렌더링할 HTML 태그 또는 컴포넌트 (기본값: `'section'`). |
-| ... | `HTMLAttributes<HTMLElement>` | 아니오 | `className`, `style` 등 일반 HTML 속성. |
+| Prop | 타입                          | 필수   | 설명                                                          |
+| ---- | ----------------------------- | ------ | ------------------------------------------------------------- |
+| `id` | `string`                      | 예     | 섹션의 고유 식별자 (`scrollTo(id)` 및 활성 섹션 감지에 사용). |
+| `as` | `ElementType`                 | 아니오 | 렌더링할 HTML 태그 또는 컴포넌트 (기본값: `'section'`).       |
+| ...  | `HTMLAttributes<HTMLElement>` | 아니오 | `className`, `style` 등 일반 HTML 속성.                       |
 
 ## 예제
 
@@ -29,7 +29,7 @@ import { ScrollSectionProvider, Section } from '@jump-section/react';
   <Section id="section-2" className="min-h-screen p-10">
     <h1>Section 2</h1>
   </Section>
-</ScrollSectionProvider>
+</ScrollSectionProvider>;
 ```
 
 ### 다른 태그로 렌더링
@@ -56,7 +56,7 @@ const sectionRef = useRef<HTMLElement>(null);
 
 <Section ref={sectionRef} id="contact">
   연락처 섹션
-</Section>
+</Section>;
 ```
 
 ## 관련 문서

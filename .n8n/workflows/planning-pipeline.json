@@ -1,0 +1,316 @@
+{
+  "name": "jump-section: Planning Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 1,
+              "triggerAtDay": [1],
+              "triggerAtHour": 9,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule (매주 월요일 09:00)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/bae080311/jump-section/issues",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "state",
+              "value": "open"
+            },
+            {
+              "name": "per_page",
+              "value": "20"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-open-issues",
+      "name": "GitHub: Open Issues 조회",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/bae080311/jump-section/commits",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "since",
+              "value": "={{ new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() }}"
+            },
+            {
+              "name": "per_page",
+              "value": "20"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "get-recent-commits",
+      "name": "GitHub: 최근 커밋 조회",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const issues = $('GitHub: Open Issues 조회').all().map(i => i.json);\nconst commits = $('GitHub: 최근 커밋 조회').all().map(c => c.json);\n\nconst issuesSummary = issues\n  .slice(0, 10)\n  .map(i => `#${i.number}: ${i.title} [${(i.labels || []).map(l => l.name).join(', ')}]`)\n  .join('\\n') || '없음';\n\nconst commitsSummary = commits\n  .slice(0, 10)\n  .map(c => `- ${c.commit.message.split('\\n')[0]}`)\n  .join('\\n') || '없음';\n\nconst userPrompt = `## 프로젝트: jump-section\\n- 설명: IntersectionObserver 기반 섹션 스크롤 관리 라이브러리\\n- 패키지: @jump-section/core, /react, /vue, /svelte\\n\\n## 현재 Open Issues\\n${issuesSummary}\\n\\n## 지난 7일 커밋\\n${commitsSummary}\\n\\n다음 JSON 배열 형식으로만 개선 아이디어 5개를 제안하세요:\\n[\\n  {\\n    \"title\": \"이슈 제목 (영어, 50자 이내)\",\\n    \"body\": \"## Summary\\\\n\\\\n설명\\\\n\\\\n## Proposed Solution\\\\n\\\\n구현 방향\\\\n\\\\n## Acceptance Criteria\\\\n\\\\n- [ ] 조건\",\\n    \"labels\": [\"enhancement\", \"ai-proposal\", \"gemini\"]\\n  }\\n]`;\n\nconst geminiPayload = {\n  system_instruction: {\n    parts: [{ text: '당신은 오픈소스 JavaScript 라이브러리의 기술 기획자입니다. 반드시 JSON 배열만 응답하세요. 마크다운 코드블록 없이 순수 JSON만 출력하세요.' }]\n  },\n  contents: [{ role: 'user', parts: [{ text: userPrompt }] }],\n  generationConfig: { maxOutputTokens: 4096, responseMimeType: 'application/json' }\n};\n\nreturn [{ json: { geminiPayload } }];"
+      },
+      "id": "prepare-context",
+      "name": "컨텍스트 준비",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.geminiPayload }}",
+        "options": {}
+      },
+      "id": "gemini-planning",
+      "name": "Gemini: 기획 아이디어",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const geminiResponse = $('Gemini: 기획 아이디어').first().json;\nconst geminiText = geminiResponse.candidates[0].content.parts[0].text.trim();\n\nfunction parseIdeas(text) {\n  try {\n    return JSON.parse(text);\n  } catch (e) {\n    const match = text.match(/\\[([\\s\\S]*?)\\]/);\n    if (!match) return [];\n    try { return JSON.parse('[' + match[1] + ']'); } catch(e2) { return []; }\n  }\n}\n\nconst ideas = parseIdeas(geminiText);\nif (ideas.length === 0) throw new Error('Gemini 아이디어 파싱 실패. 응답: ' + geminiText.slice(0, 300));\n\nreturn ideas.map(idea => ({ json: { ...idea, _source: 'Gemini' } }));"
+      },
+      "id": "parse-ideas",
+      "name": "아이디어 파싱",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/bae080311/jump-section/issues",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "X-GitHub-Api-Version",
+              "value": "2022-11-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.GITHUB_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { title: $json.title, body: $json.body + '\\n\\n---\\n*🤖 ' + $json._source + ' AI가 자동 생성한 기획 이슈입니다. 구현하려면 `ai-implement` 라벨을 추가하세요.*', labels: $json.labels } }}",
+        "options": {}
+      },
+      "id": "create-issue",
+      "name": "GitHub: Issue 생성",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1560, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const allItems = $('GitHub: Issue 생성').all();\nconst issues = allItems.map(item => ({\n  number: item.json.number,\n  title: item.json.title,\n  url: item.json.html_url\n}));\n\nconst lines = issues.map(i => `• [#${i.number}](${i.url}) ${i.title}`).join('\\n');\n\nreturn [{ json: { issueCount: issues.length, issueLines: lines } }];"
+      },
+      "id": "aggregate-issues",
+      "name": "이슈 집계",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1780, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { embeds: [{ title: '🗓️ 주간 기획 완료', description: 'Gemini AI가 이번 주 **' + $json.issueCount + '개**의 개선 이슈를 생성했습니다.', color: 5814783, fields: [{ name: '생성된 이슈', value: $json.issueLines, inline: false }], footer: { text: 'jump-section AI Pipeline • Gemini' }, timestamp: new Date().toISOString() }] } }}",
+        "options": {}
+      },
+      "id": "discord-planning",
+      "name": "Discord: 기획 완료 알림",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2000, 300]
+    }
+  ],
+  "connections": {
+    "Schedule (매주 월요일 09:00)": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Open Issues 조회",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Open Issues 조회": {
+      "main": [
+        [
+          {
+            "node": "GitHub: 최근 커밋 조회",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: 최근 커밋 조회": {
+      "main": [
+        [
+          {
+            "node": "컨텍스트 준비",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "컨텍스트 준비": {
+      "main": [
+        [
+          {
+            "node": "Gemini: 기획 아이디어",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini: 기획 아이디어": {
+      "main": [
+        [
+          {
+            "node": "아이디어 파싱",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "아이디어 파싱": {
+      "main": [
+        [
+          {
+            "node": "GitHub: Issue 생성",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GitHub: Issue 생성": {
+      "main": [
+        [
+          {
+            "node": "이슈 집계",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "이슈 집계": {
+      "main": [
+        [
+          {
+            "node": "Discord: 기획 완료 알림",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [
+    {
+      "name": "jump-section"
+    },
+    {
+      "name": "planning"
+    }
+  ]
+}
