@@ -4,7 +4,7 @@
   <img src="https://raw.githubusercontent.com/bae080311/jump-section/main/docs/public/logo.png" alt="Jump Section Logo" width="200" />
 </div>
 
-React hooks for jump-section scroll management. Easily add scroll-to-section navigation to your React applications.
+React hooks for jump-section scroll management.
 
 ## Installation
 
@@ -61,20 +61,16 @@ function Content() {
     <main>
       <section ref={ref1}>
         <h2>Section 1</h2>
-        <p>Content for section 1...</p>
       </section>
       <section ref={ref2}>
         <h2>Section 2</h2>
-        <p>Content for section 2...</p>
       </section>
     </main>
   );
 }
 ```
 
-### Using the `Section` component
-
-You can use the `Section` component instead of manually calling `useScrollSection(id)` and attaching a ref:
+### Using the `Section` Component
 
 ```tsx
 import { ScrollSectionProvider, Section, useScrollSection } from '@jump-section/react';
@@ -86,11 +82,9 @@ function App() {
       <main>
         <Section id="section-1">
           <h2>Section 1</h2>
-          <p>Content for section 1...</p>
         </Section>
         <Section id="section-2">
           <h2>Section 2</h2>
-          <p>Content for section 2...</p>
         </Section>
       </main>
     </ScrollSectionProvider>
@@ -98,17 +92,17 @@ function App() {
 }
 ```
 
-**Section props:** `id` (required), `as?: ElementType` (default: `'section'`), plus any HTML attributes.
-
-### With Active State
+### Scroll Progress
 
 ```tsx
-function Section({ id, title, children }) {
-  const { registerRef, isActive } = useScrollSection(id);
+import { useScrollProgress } from '@jump-section/react';
+
+function Section({ id, children }) {
+  const progress = useScrollProgress(id);
 
   return (
-    <section ref={registerRef} className={isActive ? 'active' : ''}>
-      <h2>{title}</h2>
+    <section>
+      <div style={{ width: `${progress * 100}%` }} />
       {children}
     </section>
   );
@@ -123,46 +117,53 @@ Provides scroll management context to child components.
 
 **Props:**
 
-- `offset?: number` - Vertical offset in pixels (useful for fixed headers)
-- `behavior?: ScrollBehavior` - Scroll behavior: `'smooth'` | `'instant'` | `'auto'`
-- `children: ReactNode` - Child components
+| Prop       | Type                  | Default    | Description                                                |
+| ---------- | --------------------- | ---------- | ---------------------------------------------------------- |
+| `offset`   | `number`              | `0`        | Vertical offset in pixels (useful for fixed headers)       |
+| `behavior` | `ScrollBehavior`      | `'smooth'` | Scroll behavior: `'smooth'` \| `'instant'` \| `'auto'`     |
+| `hash`     | `boolean`             | `false`    | Sync active section with URL hash                          |
+| `keyboard` | `boolean`             | `false`    | Enable `Alt+ArrowDown` / `Alt+ArrowUp` keyboard navigation |
+| `root`     | `HTMLElement \| null` | `null`     | Custom scroll container (defaults to `window`)             |
+| `children` | `ReactNode`           | —          | Child components                                           |
 
 ### `useScrollSection(sectionId?: string)`
 
-Hook for managing scroll sections.
-
-**Parameters:**
-
-- `sectionId?: string` - Optional section ID to register
+Hook for registering a section and accessing scroll controls.
 
 **Returns:**
 
-- `registerRef: (element: HTMLElement | null) => void` - Ref callback to register the section element
-- `scrollTo: (id: string) => void` - Function to scroll to a specific section
-- `activeId: string | null` - Currently active section ID
-- `isActive: boolean` - Whether this section is currently active (only if sectionId provided)
+| Property        | Type                                | Description                                                                   |
+| --------------- | ----------------------------------- | ----------------------------------------------------------------------------- |
+| `registerRef`   | `(el: HTMLElement \| null) => void` | Ref callback to register the section element                                  |
+| `scrollTo`      | `(id: string) => Promise<void>`     | Scroll to a specific section                                                  |
+| `scrollToNext`  | `() => Promise<void>`               | Scroll to the next section                                                    |
+| `scrollToPrev`  | `() => Promise<void>`               | Scroll to the previous section                                                |
+| `scrollToFirst` | `() => Promise<void>`               | Scroll to the first section                                                   |
+| `scrollToLast`  | `() => Promise<void>`               | Scroll to the last section                                                    |
+| `activeId`      | `string \| null`                    | Currently active section ID                                                   |
+| `isActive`      | `boolean`                           | Whether this section is active (only meaningful when `sectionId` is provided) |
+| `direction`     | `'up' \| 'down' \| null`            | Current scroll direction                                                      |
+
+### `useScrollProgress(sectionId: string): number`
+
+Returns the scroll progress (0–1) for a specific section.
 
 ### `Section`
 
-Wrapper component that registers a scroll section without manually using `useScrollSection` and a ref.
+Convenience component that registers a scroll section without manually calling `useScrollSection` and attaching a ref.
 
 **Props:**
 
-- `id: string` - (Required) Unique section ID used for `scrollTo(id)` and active detection
-- `as?: ElementType` - (Optional) HTML tag or component to render (default: `'section'`)
-- Other HTML attributes (`className`, `style`, etc.) are forwarded to the root element
+| Prop | Type          | Description                                            |
+| ---- | ------------- | ------------------------------------------------------ |
+| `id` | `string`      | (Required) Unique section ID                           |
+| `as` | `ElementType` | HTML tag or component to render (default: `'section'`) |
+
+All other HTML attributes are forwarded to the root element.
 
 ### `useScrollManager()`
 
-Hook to access the underlying ScrollManager instance directly.
-
-**Returns:**
-
-- `ScrollManager` - The scroll manager instance
-
-## TypeScript
-
-This package includes TypeScript definitions.
+Returns the underlying `ScrollManager` instance for advanced use cases.
 
 ## License
 
