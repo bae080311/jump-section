@@ -3,21 +3,49 @@ name: Slash Fix Command
 on:
   issue_comment:
     types: [created]
+  pull_request_review_comment:
+    types: [created]
 
 jobs:
   slash-fix:
-    # PR 댓글이고 /fix 로 시작할 때만 실행
-    if: |
-      github.event.issue.pull_request &&
-      startsWith(github.event.comment.body, '/fix')
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
       issues: write
 
     steps:
+      - name: 커맨드 감지
+        id: detect
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = (context.payload.comment?.body || '').trim();
+            const isIssueComment = context.eventName === 'issue_comment';
+            const isReviewComment = context.eventName === 'pull_request_review_comment';
+
+            // issue_comment: /fix-build, /fix-lint 허용 (PR 코멘트인 경우)
+            // pull_request_review_comment: /fix 허용 (리뷰 코멘트 답장인 경우)
+            let command = null;
+            if (isIssueComment && context.payload.issue?.pull_request) {
+              if (body === '/fix-build') command = 'fix-build';
+              else if (body === '/fix-lint') command = 'fix-lint';
+            } else if (isReviewComment) {
+              if (body === '/fix') command = 'fix';
+            }
+
+            if (!command) {
+              core.setOutput('skip', 'true');
+              return;
+            }
+            core.setOutput('skip', 'false');
+            core.setOutput('command', command);
+
+      - name: 스킵
+        if: steps.detect.outputs.skip == 'true'
+        run: echo "Not a slash command, skipping."
+
       - name: 권한 확인 (write 이상만 허용)
-        id: check-permission
+        if: steps.detect.outputs.skip == 'false'
         uses: actions/github-script@v7
         with:
           script: |
@@ -26,98 +54,83 @@ jobs:
               repo: context.repo.repo,
               username: context.payload.comment.user.login,
             });
-            const level = data.permission;
-            if (!['admin', 'write'].includes(level)) {
-              core.setFailed(`${context.payload.comment.user.login} has no write permission (${level})`);
+            if (!['admin', 'write'].includes(data.permission)) {
+              core.setFailed(`${context.payload.comment.user.login} has no write permission (${data.permission})`);
             }
 
       - name: 👀 반응 추가
+        if: steps.detect.outputs.skip == 'false'
         uses: actions/github-script@v7
         with:
           script: |
-            await github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id,
-              content: 'eyes',
-            });
-
-      - name: PR 정보 조회
-        id: pr
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.payload.issue.number,
-            });
-
-            // 최신 Gemini 리뷰 조회 (없으면 빈 문자열)
-            const { data: reviews } = await github.rest.pulls.listReviews({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: pr.number,
-            });
-            const geminiReview = reviews
-              .filter(r => r.user.login === 'gemini-code-assist[bot]')
-              .pop();
-
-            core.setOutput('number', pr.number);
-            core.setOutput('title', pr.title);
-            core.setOutput('html_url', pr.html_url);
-            core.setOutput('head_ref', pr.head.ref);
-            core.setOutput('head_sha', pr.head.sha);
-            core.setOutput('review_body', geminiReview?.body ?? '');
-            core.setOutput('review_id', geminiReview?.id ?? 0);
+            const isReview = context.eventName === 'pull_request_review_comment';
+            if (isReview) {
+              await github.rest.reactions.createForPullRequestReviewComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: 'eyes',
+              });
+            } else {
+              await github.rest.reactions.createForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: 'eyes',
+              });
+            }
 
       - name: n8n webhook 호출
+        if: steps.detect.outputs.skip == 'false'
+        env:
+          EVENT_PAYLOAD: ${{ toJSON(github.event) }}
+          EVENT_NAME: ${{ github.event_name }}
         run: |
-          curl -s -X POST "${{ secrets.N8N_WEBHOOK_URL }}/webhook/pr-auto-fix" \
+          curl -s -X POST "${{ secrets.N8N_WEBHOOK_URL }}/webhook/comment-fix" \
             -H "Content-Type: application/json" \
-            -d '{
-              "action": "submitted",
-              "review": {
-                "user": { "login": "gemini-code-assist[bot]" },
-                "body": ${{ toJSON(steps.pr.outputs.review_body) }},
-                "state": "COMMENTED",
-                "id": ${{ steps.pr.outputs.review_id }}
-              },
-              "pull_request": {
-                "number": ${{ steps.pr.outputs.number }},
-                "title": ${{ toJSON(steps.pr.outputs.title) }},
-                "html_url": ${{ toJSON(steps.pr.outputs.html_url) }},
-                "head": {
-                  "ref": ${{ toJSON(steps.pr.outputs.head_ref) }},
-                  "sha": ${{ toJSON(steps.pr.outputs.head_sha) }}
-                }
-              },
-              "repository": {
-                "owner": { "login": "${{ github.repository_owner }}" },
-                "name": "${{ github.event.repository.name }}"
-              }
-            }'
+            -H "X-GitHub-Event: ${EVENT_NAME}" \
+            -d "${EVENT_PAYLOAD}"
 
       - name: ✅ 완료 반응 추가
-        if: success()
+        if: steps.detect.outputs.skip == 'false' && success()
         uses: actions/github-script@v7
         with:
           script: |
-            await github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id,
-              content: 'rocket',
-            });
+            const isReview = context.eventName === 'pull_request_review_comment';
+            if (isReview) {
+              await github.rest.reactions.createForPullRequestReviewComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: 'rocket',
+              });
+            } else {
+              await github.rest.reactions.createForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: 'rocket',
+              });
+            }
 
       - name: ❌ 실패 반응 추가
-        if: failure()
+        if: steps.detect.outputs.skip == 'false' && failure()
         uses: actions/github-script@v7
         with:
           script: |
-            await github.rest.reactions.createForIssueComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              comment_id: context.payload.comment.id,
-              content: '-1',
-            });
+            const isReview = context.eventName === 'pull_request_review_comment';
+            if (isReview) {
+              await github.rest.reactions.createForPullRequestReviewComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: '-1',
+              });
+            } else {
+              await github.rest.reactions.createForIssueComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: context.payload.comment.id,
+                content: '-1',
+              });
+            }

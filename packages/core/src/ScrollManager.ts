@@ -136,15 +136,28 @@ export class ScrollManager {
   private handleIntersection = (entries: IntersectionObserverEntry[]) => {
     const visibleEntries = entries.filter((e) => e.isIntersecting);
 
-    if (visibleEntries.length === 0) return;
+    if (visibleEntries.length === 0) {
+      // 모든 섹션이 뷰포트 밖으로 벗어났을 때 비활성 상태로 전환
+      if (this.activeId !== null) {
+        this.previousId = this.activeId;
+        this.activeId = null;
+        this.scheduleNotify();
+      }
+      return;
+    }
 
     const best = visibleEntries.reduce((prev, current) =>
       prev.intersectionRatio > current.intersectionRatio ? prev : current,
     );
 
-    // element.id 대신 sections Map에서 id 역조회 (id와 element.id가 다를 수 있음)
-    const entry = [...this.sections.entries()].find(([, el]) => el === best.target);
-    const id = entry?.[0] ?? best.target.id;
+    let id: string | undefined;
+    for (const [sectionId, el] of this.sections) {
+      if (el === best.target) {
+        id = sectionId;
+        break;
+      }
+    }
+    id = id ?? best.target.id;
 
     if (!id || id === this.activeId || this.disabledSections.has(id)) return;
 
@@ -267,71 +280,84 @@ export class ScrollManager {
     const element = this.sections.get(id);
     if (!element) {
       console.warn(
-        `[ScrollManager] Section with id "${id}" not found. Available sections: ${Array.from(this.sections.keys()).join(', ')}`,
+        `[ScrollManager] Section with id "${id}" not found. Available sections: ${Array.from(
+          this.sections.keys(),
+        ).join(', ')}`,
       );
       return Promise.resolve();
     }
 
-    const { offset, behavior } = this.options;
+    const elementRect = element.getBoundingClientRect();
+    const rootRect = this.options.root?.getBoundingClientRect() || { top: 0, left: 0 };
 
-    if (this.options.root) {
-      const elementTop = element.offsetTop;
-      this.options.root.scrollTo({
-        top: elementTop + offset,
-        behavior,
-      });
-    } else {
-      const elementPosition = element.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({
-        top: elementPosition + offset,
-        behavior,
-      });
-    }
+    const targetScrollTop =
+      elementRect.top + this.currentScrollTop - rootRect.top + this.options.offset;
+
+    const scrollTarget = this.options.root || window;
 
     return new Promise<void>((resolve) => {
-      if (behavior === 'auto' || behavior === 'instant') {
-        resolve();
-        return;
-      }
-
-      let lastScrollY = this.currentScrollTop;
-      let rafId: number;
-
-      const checkSettled = () => {
-        const current = this.currentScrollTop;
-        if (current === lastScrollY) {
-          cancelAnimationFrame(rafId);
+      const scrollHandler = () => {
+        if (
+          Math.abs(this.currentScrollTop - targetScrollTop) < 1 ||
+          (scrollTarget === window &&
+            window.innerHeight + window.scrollY >= document.body.offsetHeight) || // End of page
+          (this.options.root &&
+            this.options.root.clientHeight + this.options.root.scrollTop >=
+              this.options.root.scrollHeight) // End of root scrollable element
+        ) {
+          scrollTarget.removeEventListener('scroll', scrollHandler);
+          clearTimeout(safetyTimeout);
           resolve();
-          return;
         }
-        lastScrollY = current;
-        rafId = requestAnimationFrame(checkSettled);
       };
 
-      rafId = requestAnimationFrame(checkSettled);
-
-      // 안전망: 1초 후 강제 resolve
-      setTimeout(() => {
-        cancelAnimationFrame(rafId);
+      // 스크롤이 완료되지 않는 경우를 대비한 안전 타임아웃
+      const safetyTimeout = setTimeout(() => {
+        scrollTarget.removeEventListener('scroll', scrollHandler);
         resolve();
       }, 1000);
+
+      if (this.options.behavior === 'smooth') {
+        scrollTarget.addEventListener('scroll', scrollHandler, { passive: true });
+      } else {
+        clearTimeout(safetyTimeout);
+        resolve(); // 'auto' behavior resolves immediately
+      }
+
+      if (this.options.root) {
+        this.options.root.scrollTo({
+          top: targetScrollTop,
+          behavior: this.options.behavior,
+        });
+      } else {
+        window.scrollTo({
+          top: targetScrollTop,
+          behavior: this.options.behavior,
+        });
+      }
     });
   }
 
   /** 다음 섹션으로 스크롤합니다 */
   public scrollToNext(): Promise<void> {
-    const ordered = this.getSections();
-    const currentIndex = this.activeId ? ordered.indexOf(this.activeId) : -1;
-    const nextId = ordered[currentIndex + 1];
-    return nextId ? this.scrollTo(nextId) : Promise.resolve();
+    const sortedSections = this.getSections();
+    const currentIndex = this.activeId ? sortedSections.indexOf(this.activeId) : -1;
+    const nextIndex = currentIndex + 1;
+    if (nextIndex < sortedSections.length) {
+      return this.scrollTo(sortedSections[nextIndex]);
+    }
+    return Promise.resolve();
   }
 
   /** 이전 섹션으로 스크롤합니다 */
   public scrollToPrev(): Promise<void> {
-    const ordered = this.getSections();
-    const currentIndex = this.activeId ? ordered.indexOf(this.activeId) : ordered.length;
-    const prevId = ordered[currentIndex - 1];
-    return prevId ? this.scrollTo(prevId) : Promise.resolve();
+    const sortedSections = this.getSections();
+    const currentIndex = this.activeId ? sortedSections.indexOf(this.activeId) : -1;
+    const prevIndex = currentIndex - 1;
+    if (prevIndex >= 0) {
+      return this.scrollTo(sortedSections[prevIndex]);
+    }
+    return Promise.resolve();
   }
 
   /** 첫 번째 섹션으로 스크롤합니다 */
@@ -346,59 +372,55 @@ export class ScrollManager {
     return ordered.length > 0 ? this.scrollTo(ordered[ordered.length - 1]) : Promise.resolve();
   }
 
-  /** 활성 섹션 변경 시 호출될 콜백을 등록합니다. 구독 해제 함수를 반환합니다 */
+  /** 활성 섹션 변경 이벤트를 구독합니다 */
   public onActiveChange(callback: ActiveChangeCallback): () => void {
     this.listeners.add(callback);
+    // 즉시 현재 활성 섹션 상태를 전달
     callback(this.activeId, { previous: this.previousId, direction: this.scrollDirection });
-    return () => this.listeners.delete(callback);
-  }
-
-  /** 특정 섹션의 스크롤 진행률(0~1) 변경 시 호출될 콜백을 등록합니다 */
-  public onProgressChange(id: string, callback: ProgressCallback): () => void {
-    if (!this.progressListeners.has(id)) {
-      this.progressListeners.set(id, new Set());
-    }
-    this.progressListeners.get(id)!.add(callback);
     return () => {
-      const set = this.progressListeners.get(id);
-      if (set) {
-        set.delete(callback);
-        if (set.size === 0) this.progressListeners.delete(id);
-      }
+      this.listeners.delete(callback);
     };
   }
 
   private notifyListeners() {
-    const meta: ActiveChangeMeta = {
-      previous: this.previousId,
-      direction: this.scrollDirection,
-    };
+    const meta: ActiveChangeMeta = { previous: this.previousId, direction: this.scrollDirection };
     this.listeners.forEach((listener) => listener(this.activeId, meta));
   }
 
-  /** 모든 리소스를 정리합니다 */
+  /** 특정 섹션의 스크롤 진행률 이벤트를 구독합니다 */
+  public onProgressChange(sectionId: string, callback: ProgressCallback): () => void {
+    if (!this.progressListeners.has(sectionId)) {
+      this.progressListeners.set(sectionId, new Set());
+    }
+    this.progressListeners.get(sectionId)?.add(callback);
+    // 즉시 현재 진행률 상태를 전달
+    this.updateProgress();
+    return () => {
+      this.progressListeners.get(sectionId)?.delete(callback);
+    };
+  }
+
+  /** 등록된 모든 이벤트 리스너와 Observer를 해제하고 정리합니다 */
   public destroy() {
     this.observer?.disconnect();
     this.resizeObserver?.disconnect();
+    this.sections.forEach((element) => {
+      this.observer?.unobserve(element);
+      this.resizeObserver?.unobserve(element);
+    });
+    this.sections.clear();
+    this.disabledSections.clear();
+    this.listeners.clear();
+    this.progressListeners.clear();
 
     if (this.scrollHandler) {
       this.scrollRoot.removeEventListener('scroll', this.scrollHandler as EventListener);
-      this.scrollHandler = null;
     }
-
-    if (this.keyboardHandler) {
-      document.removeEventListener('keydown', this.keyboardHandler);
-      this.keyboardHandler = null;
-    }
-
     if (this.popstateHandler) {
       window.removeEventListener('popstate', this.popstateHandler);
-      this.popstateHandler = null;
     }
-
-    this.sections.clear();
-    this.listeners.clear();
-    this.progressListeners.clear();
-    this.disabledSections.clear();
+    if (this.keyboardHandler) {
+      document.removeEventListener('keydown', this.keyboardHandler);
+    }
   }
 }
