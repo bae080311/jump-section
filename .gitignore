@@ -2,3 +2,5 @@
 /dist
 .turbo
 **/dist
+.n8n
+coverage
