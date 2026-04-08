@@ -9,6 +9,15 @@
             "command": "pnpm format 2>&1 | tail -5"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/post-pr-coverage.sh"
+          }
+        ]
       }
     ]
   }
