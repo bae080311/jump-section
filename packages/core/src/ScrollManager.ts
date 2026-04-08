@@ -431,9 +431,9 @@ export class ScrollManager {
     const element = this.sections.get(id);
     if (!element) {
       console.warn(
-        `[ScrollManager] Section with id "${id}" not found. Available sections: ${Array.from(
-          this.sections.keys(),
-        ).join(', ')}`,
+        `[ScrollManager] Section with id "${id}" not found. Available sections: ${
+          Array.from(this.sections.keys()).join(', ')
+        }`,
       );
       return Promise.resolve();
     }
@@ -448,14 +448,7 @@ export class ScrollManager {
 
     return new Promise<void>((resolve) => {
       const scrollHandler = () => {
-        if (
-          Math.abs(this.currentScrollTop - targetScrollTop) < 1 ||
-          (scrollTarget === window &&
-            window.innerHeight + window.scrollY >= document.body.offsetHeight) || // End of page
-          (this.options.root &&
-            this.options.root.clientHeight + this.options.root.scrollTop >=
-              this.options.root.scrollHeight) // End of root scrollable element
-        ) {
+        if (Math.abs(this.currentScrollTop - targetScrollTop) < 1) {
           scrollTarget.removeEventListener('scroll', scrollHandler);
           clearTimeout(safetyTimeout);
           resolve();
