@@ -431,9 +431,9 @@ export class ScrollManager {
     const element = this.sections.get(id);
     if (!element) {
       console.warn(
-        `[ScrollManager] Section with id "${id}" not found. Available sections: ${
-          Array.from(this.sections.keys()).join(', ')
-        }`,
+        `[ScrollManager] Section with id "${id}" not found. Available sections: ${Array.from(
+          this.sections.keys(),
+        ).join(', ')}`,
       );
       return Promise.resolve();
     }
