@@ -1,4 +1,3 @@
-"""typescript
 export interface ScrollOptions {
   offset?: number;
   behavior?: ScrollBehavior;
