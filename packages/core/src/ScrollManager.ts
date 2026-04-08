@@ -1,5 +1,3 @@
-import { runInContext } from 'vm';
-
 export interface ScrollOptions {
   offset?: number;
   behavior?: ScrollBehavior;
@@ -142,7 +140,7 @@ export class ScrollManager {
     document.addEventListener('keydown', this.keyboardHandler);
   }
 
-  private handleIntersection = (entries: IntersectionObserverEntry) => {
+  private handleIntersection = (entries: IntersectionObserverEntry[]) => {
     if (this.options.debug) {
       this.updateDebugOverlays(entries);
     }
@@ -222,34 +220,34 @@ export class ScrollManager {
   private createDebugOverlay(id: string, element: HTMLElement): HTMLDivElement {
     const overlay = document.createElement('div');
     overlay.id = `jump-section-debug-${id}`;
-    overlay.style.cssText = ` \
-      position: absolute; \
-      top: 0; \
-      left: 0; \
-      width: 100%; \
-      height: 100%; \
-      pointer-events: none; \
-      box-sizing: border-box; \
-      border: 2px solid rgba(0, 100, 255, 0.5); \
-      background: rgba(0, 100, 255, 0.1); \
-      z-index: 9999; \
-      display: flex; \
-      align-items: center; \
-      justify-content: center; \
-      font-family: monospace; \
-      font-size: 12px; \
-      color: white; \
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.8); \
-      overflow: hidden; \
+    overlay.style.cssText = ` 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      width: 100%; 
+      height: 100%; 
+      pointer-events: none; 
+      box-sizing: border-box; 
+      border: 2px solid rgba(0, 100, 255, 0.5); 
+      background: rgba(0, 100, 255, 0.1); 
+      z-index: 9999; 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-family: monospace; 
+      font-size: 12px; 
+      color: white; 
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8); 
+      overflow: hidden; 
     `;
     element.style.position =
       element.style.position === 'static' ? 'relative' : element.style.position;
 
     const label = document.createElement('span');
-    label.style.cssText = ` \
-      padding: 2px 5px; \
-      background: rgba(0, 100, 255, 0.7); \
-      border-radius: 3px; \
+    label.style.cssText = ` 
+      padding: 2px 5px; 
+      background: rgba(0, 100, 255, 0.7); 
+      border-radius: 3px; 
     `;
     label.textContent = `ID: ${id}`;
     overlay.appendChild(label);
@@ -428,7 +426,9 @@ export class ScrollManager {
 
   /** 지정한 섹션으로 스크롤합니다. 스크롤 완료 시 resolve되는 Promise를 반환합니다 */
   public scrollTo(id: string): Promise<void> {
-    if (typeof window === 'undefined') return Promise.resolve();
+    if (typeof window === 'undefined') {
+      return Promise.resolve();
+    }
 
     const element = this.sections.get(id);
     if (!element) {
