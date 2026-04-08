@@ -21,42 +21,33 @@ class IntersectionObserverMock implements IntersectionObserver {
 vi.stubGlobal('IntersectionObserver', IntersectionObserverMock);
 vi.stubGlobal('scrollTo', () => {});
 
+// 벤치마크 루프 외부에서 공유 인스턴스 생성 — 초기화 비용이 측정치에 포함되지 않도록
+const sharedManager = new ScrollManager();
+const sharedEl = document.createElement('div');
+
 describe('ScrollManager 벤치마크', () => {
   bench('registerSection + unregisterSection', () => {
-    const manager = new ScrollManager();
-    const el = document.createElement('div');
-    manager.registerSection('s1', el);
-    manager.unregisterSection('s1');
-    manager.destroy();
+    sharedManager.registerSection('s1', sharedEl);
+    sharedManager.unregisterSection('s1');
   });
 
   bench('getSections', () => {
-    const manager = new ScrollManager();
-    const el = document.createElement('div');
-    manager.registerSection('s1', el);
-    manager.getSections();
-    manager.destroy();
+    sharedManager.getSections();
   });
 
   bench('getActiveId', () => {
-    const manager = new ScrollManager();
-    manager.getActiveId();
-    manager.destroy();
+    sharedManager.getActiveId();
   });
 
   bench('onActiveChange (subscribe/unsubscribe)', () => {
-    const manager = new ScrollManager();
-    const unsub = manager.onActiveChange(() => {});
+    const unsub = sharedManager.onActiveChange(() => {});
     unsub();
-    manager.destroy();
   });
 
   bench('disableSection + enableSection', () => {
-    const manager = new ScrollManager();
-    const el = document.createElement('div');
-    manager.registerSection('s1', el);
-    manager.disableSection('s1');
-    manager.enableSection('s1');
-    manager.destroy();
+    sharedManager.registerSection('s2', sharedEl);
+    sharedManager.disableSection('s2');
+    sharedManager.enableSection('s2');
+    sharedManager.unregisterSection('s2');
   });
 });

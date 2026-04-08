@@ -35,12 +35,14 @@ fi
 # ── 빌드 + 번들 사이즈 측정 ───────────────────────────────────────────────────
 BUNDLE_TABLE=""
 if pnpm build &>/dev/null; then
-  BUNDLE_TABLE="| 파일 | 크기 |"$'\n'"|------|------|"
+  BUNDLE_TABLE="| 파일 | 크기 | gzip |"$'\n'"|------|------|------|"
   for f in packages/*/dist/*.{js,mjs} 2>/dev/null; do
     [[ -f "$f" ]] || continue
     SIZE_BYTES=$(wc -c < "$f")
     SIZE_KB=$(awk "BEGIN {printf \"%.1f KB\", $SIZE_BYTES/1024}")
-    BUNDLE_TABLE+=$'\n'"| \`$f\` | $SIZE_KB |"
+    GZIP_BYTES=$(gzip -c "$f" | wc -c)
+    GZIP_KB=$(awk "BEGIN {printf \"%.1f KB\", $GZIP_BYTES/1024}")
+    BUNDLE_TABLE+=$'\n'"| \`$f\` | $SIZE_KB | $GZIP_KB |"
   done
 else
   BUNDLE_TABLE="⚠️ 빌드 실패"
