@@ -220,35 +220,12 @@ export class ScrollManager {
   private createDebugOverlay(id: string, element: HTMLElement): HTMLDivElement {
     const overlay = document.createElement('div');
     overlay.id = `jump-section-debug-${id}`;
-    overlay.style.cssText = ` 
-      position: absolute; 
-      top: 0; 
-      left: 0; 
-      width: 100%; 
-      height: 100%; 
-      pointer-events: none; 
-      box-sizing: border-box; 
-      border: 2px solid rgba(0, 100, 255, 0.5); 
-      background: rgba(0, 100, 255, 0.1); 
-      z-index: 9999; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      font-family: monospace; 
-      font-size: 12px; 
-      color: white; 
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.8); 
-      overflow: hidden; 
-    `;
+    overlay.style.cssText = ` \n      position: absolute; \n      top: 0; \n      left: 0; \n      width: 100%; \n      height: 100%; \n      pointer-events: none; \n      box-sizing: border-box; \n      border: 2px solid rgba(0, 100, 255, 0.5); \n      background: rgba(0, 100, 255, 0.1); \n      z-index: 9999; \n      display: flex; \n      align-items: center; \n      justify-content: center; \n      font-family: monospace; \n      font-size: 12px; \n      color: white; \n      text-shadow: 1px 1px 2px rgba(0,0,0,0.8); \n      overflow: hidden; \n    `;
     element.style.position =
       element.style.position === 'static' ? 'relative' : element.style.position;
 
     const label = document.createElement('span');
-    label.style.cssText = ` 
-      padding: 2px 5px; 
-      background: rgba(0, 100, 255, 0.7); 
-      border-radius: 3px; 
-    `;
+    label.style.cssText = ` \n      padding: 2px 5px; \n      background: rgba(0, 100, 255, 0.7); \n      border-radius: 3px; \n    `;
     label.textContent = `ID: ${id}`;
     overlay.appendChild(label);
 
