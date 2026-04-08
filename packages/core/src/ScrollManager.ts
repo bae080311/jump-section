@@ -426,16 +426,14 @@ export class ScrollManager {
 
   /** 지정한 섹션으로 스크롤합니다. 스크롤 완료 시 resolve되는 Promise를 반환합니다 */
   public scrollTo(id: string): Promise<void> {
-    if (typeof window === 'undefined') {
-      return Promise.resolve();
-    }
+    if (typeof window === 'undefined') return Promise.resolve();
 
     const element = this.sections.get(id);
     if (!element) {
       console.warn(
-        `[ScrollManager] Section with id "${id}" not found. Available sections: ${Array.from(
-          this.sections.keys(),
-        ).join(', ')}`,
+        `[ScrollManager] Section with id "${id}" not found. Available sections: ${
+          Array.from(this.sections.keys()).join(', ')
+        }`,
       );
       return Promise.resolve();
     }
