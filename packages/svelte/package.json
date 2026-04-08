@@ -1,6 +1,6 @@
 {
   "name": "@jump-section/svelte",
-  "version": "1.0.24",
+  "version": "1.0.25",
   "description": "jump-section adapter for Svelte 5",
   "main": "dist/index.js",
   "module": "dist/index.mjs",
