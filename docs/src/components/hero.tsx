@@ -20,10 +20,15 @@ interface HeroProps {
 
 export function Hero({ dict, lang }: HeroProps) {
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center pt-20 overflow-hidden">
-      {/* Background gradients */}
-      <div className="absolute top-1/4 -left-20 w-80 h-80 bg-primary/20 rounded-full blur-[120px] -z-10 animate-pulse" />
-      <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-primary/10 rounded-full blur-[120px] -z-10 animate-pulse delay-1000" />
+    <section className="relative min-h-screen flex flex-col items-center justify-center pt-20">
+      {/* Background gradients - rendered outside overflow context to prevent clipping */}
+      <div
+        className="absolute inset-0 overflow-hidden pointer-events-none -z-10"
+        aria-hidden="true"
+      >
+        <div className="absolute top-1/4 -left-20 w-80 h-80 bg-primary/20 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-1/4 -right-20 w-80 h-80 bg-primary/10 rounded-full blur-[120px] animate-pulse delay-1000" />
+      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}

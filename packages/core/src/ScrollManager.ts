@@ -9,6 +9,8 @@ export interface ScrollOptions {
   keyboard?: boolean;
   /** 디버그 모드를 활성화하여 섹션 경계 및 상태를 시각화합니다 */
   debug?: boolean;
+  /** IntersectionObserver의 rootMargin을 커스터마이징합니다. 기본값: "-20% 0px -60% 0px" */
+  rootMargin?: string;
 }
 
 export interface ActiveChangeMeta {
@@ -47,6 +49,7 @@ export class ScrollManager {
       root: null,
       keyboard: false,
       debug: false,
+      rootMargin: '-20% 0px -60% 0px',
       ...options,
     };
     this.initObserver();
@@ -75,7 +78,7 @@ export class ScrollManager {
 
     this.observer = new IntersectionObserver(this.handleIntersection, {
       root: this.options.root ?? null,
-      rootMargin: '-20% 0px -60% 0px',
+      rootMargin: this.options.rootMargin,
       threshold: [0, 0.1, 0.5, 1],
     });
 
@@ -217,35 +220,12 @@ export class ScrollManager {
   private createDebugOverlay(id: string, element: HTMLElement): HTMLDivElement {
     const overlay = document.createElement('div');
     overlay.id = `jump-section-debug-${id}`;
-    overlay.style.cssText = ` 
-      position: absolute; 
-      top: 0; 
-      left: 0; 
-      width: 100%; 
-      height: 100%; 
-      pointer-events: none; 
-      box-sizing: border-box; 
-      border: 2px solid rgba(0, 100, 255, 0.5); 
-      background: rgba(0, 100, 255, 0.1); 
-      z-index: 9999; 
-      display: flex; 
-      align-items: center; 
-      justify-content: center; 
-      font-family: monospace; 
-      font-size: 12px; 
-      color: white; 
-      text-shadow: 1px 1px 2px rgba(0,0,0,0.8); 
-      overflow: hidden; 
-    `;
+    overlay.style.cssText = ` \n      position: absolute; \n      top: 0; \n      left: 0; \n      width: 100%; \n      height: 100%; \n      pointer-events: none; \n      box-sizing: border-box; \n      border: 2px solid rgba(0, 100, 255, 0.5); \n      background: rgba(0, 100, 255, 0.1); \n      z-index: 9999; \n      display: flex; \n      align-items: center; \n      justify-content: center; \n      font-family: monospace; \n      font-size: 12px; \n      color: white; \n      text-shadow: 1px 1px 2px rgba(0,0,0,0.8); \n      overflow: hidden; \n    `;
     element.style.position =
       element.style.position === 'static' ? 'relative' : element.style.position;
 
     const label = document.createElement('span');
-    label.style.cssText = ` 
-      padding: 2px 5px; 
-      background: rgba(0, 100, 255, 0.7); 
-      border-radius: 3px; 
-    `;
+    label.style.cssText = ` \n      padding: 2px 5px; \n      background: rgba(0, 100, 255, 0.7); \n      border-radius: 3px; \n    `;
     label.textContent = `ID: ${id}`;
     overlay.appendChild(label);
 
@@ -445,14 +425,7 @@ export class ScrollManager {
 
     return new Promise<void>((resolve) => {
       const scrollHandler = () => {
-        if (
-          Math.abs(this.currentScrollTop - targetScrollTop) < 1 ||
-          (scrollTarget === window &&
-            window.innerHeight + window.scrollY >= document.body.offsetHeight) || // End of page
-          (this.options.root &&
-            this.options.root.clientHeight + this.options.root.scrollTop >=
-              this.options.root.scrollHeight) // End of root scrollable element
-        ) {
+        if (Math.abs(this.currentScrollTop - targetScrollTop) < 1) {
           scrollTarget.removeEventListener('scroll', scrollHandler);
           clearTimeout(safetyTimeout);
           resolve();
@@ -552,7 +525,7 @@ export class ScrollManager {
     this.listeners.forEach((listener) => listener(this.activeId, meta));
   }
 
-  /** 특정 섹션의 스크롤 진행률 이벤트를 구독합니다 */
+  /** 특정 섹션의 스크롤 진행률(0~1) 변경 시 호출될 콜백을 등록합니다 */
   public onProgressChange(sectionId: string, callback: ProgressCallback): () => void {
     if (!this.progressListeners.has(sectionId)) {
       this.progressListeners.set(sectionId, new Set());
