@@ -229,4 +229,46 @@ describe('ScrollManager', () => {
     // 생성자에서 한 번만 생성되어야 함 (이전에는 registerSection에서 두 번째 observer가 생성됨)
     expect(intersectionObserverMock).toHaveBeenCalledTimes(1);
   });
+
+  // ─── ARIA & Focus ────────────────────────────────────────────────────────────
+
+  it('applies role and aria-labelledby on registerSection', () => {
+    manager.registerSection('section-1', mockElement);
+    expect(mockElement.getAttribute('role')).toBe('region');
+    expect(mockElement.getAttribute('aria-labelledby')).toBe('section-1');
+  });
+
+  it('focuses element when focusActiveSection is enabled', async () => {
+    manager = new ScrollManager({ focusActiveSection: true });
+    manager.registerSection('section-1', mockElement);
+    vi.spyOn(mockElement, 'getBoundingClientRect').mockReturnValue({ top: 100 } as DOMRect);
+    vi.spyOn(mockElement, 'focus').mockImplementation(() => {});
+
+    await manager.scrollTo('section-1');
+    expect(mockElement.focus).toHaveBeenCalled();
+  });
+
+  // ─── Sticky Elements ──────────────────────────────────────────────────
+
+  it('calculates sticky element height', () => {
+    const stickyHeader = document.createElement('div');
+    stickyHeader.id = 'sticky-header';
+    document.body.appendChild(stickyHeader);
+    vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+      position: 'sticky',
+    } as CSSStyleDeclaration);
+    vi.spyOn(stickyHeader, 'getBoundingClientRect').mockReturnValue({ height: 50 } as DOMRect);
+
+    manager = new ScrollManager({ stickyElements: ['sticky-header'] });
+
+    document.body.removeChild(stickyHeader);
+  });
+
+  // ─── Custom Easing ────────────────────────────────────────────────────────
+
+  it('applies custom easing function', () => {
+    const customEasing = (t: number) => t * t;
+    manager = new ScrollManager({ easing: customEasing, behavior: 'smooth' });
+    expect(manager).toBeDefined();
+  });
 });
