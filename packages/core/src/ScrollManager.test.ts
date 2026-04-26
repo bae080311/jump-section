@@ -272,4 +272,199 @@ describe('ScrollManager', () => {
     manager = new ScrollManager({ easing: customEasing, behavior: 'smooth' });
     expect(manager).toBeDefined();
   });
+
+  // ─── Additional Coverage Tests ────────────────────────────────────────
+
+  it('scrollToLast scrolls to last section', () => {
+    manager.registerSection('section-1', mockElement);
+    manager.registerSection('section-2', mockElement2);
+    vi.spyOn(mockElement2, 'getBoundingClientRect').mockReturnValue({ top: 800 } as DOMRect);
+    manager.scrollToLast();
+    expect(window.scrollTo).toHaveBeenCalled();
+  });
+
+  it('scrollToFirst scrolls to first section', () => {
+    manager.registerSection('section-1', mockElement);
+    manager.registerSection('section-2', mockElement2);
+    vi.spyOn(mockElement, 'getBoundingClientRect').mockReturnValue({ top: 100 } as DOMRect);
+    manager.scrollToFirst();
+    expect(window.scrollTo).toHaveBeenCalled();
+  });
+
+  it('offProgressChange removes listener', () => {
+    manager.registerSection('section-1', mockElement);
+    const callback = vi.fn();
+    manager.onProgressChange('section-1', callback);
+    manager.offProgressChange('section-1', callback);
+    expect(manager.getActiveId()).toBeDefined();
+  });
+
+  it('handles undefined element gracefully', () => {
+    manager.registerSection('section-1', null as unknown as HTMLElement);
+    expect(observeMock).not.toHaveBeenCalled();
+  });
+
+  it('warns when scrolling to missing section', () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    manager.scrollTo('missing');
+    expect(warnSpy).toHaveBeenCalled();
+  });
+
+  it('getActiveId returns null initially', () => {
+    expect(manager.getActiveId()).toBeNull();
+  });
+
+  it('handles window undefined', () => {
+    const managerNoWindow = new ScrollManager();
+    managerNoWindow.registerSection('section-1', mockElement);
+    expect(managerNoWindow.getSections()).toContain('section-1');
+  });
+
+  // ─── Additional Edge Cases ─────────────────────────────────────
+
+  it('getSections sorts by position', () => {
+    manager.registerSection('section-2', mockElement2);
+    manager.registerSection('section-1', mockElement);
+    const sections = manager.getSections();
+    expect(sections).toHaveLength(2);
+  });
+
+  it('offActiveChange removes listener', () => {
+    const callback = vi.fn();
+    manager.onActiveChange(callback);
+    manager.offActiveChange(callback);
+    callback.mockClear();
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it('disables section removes from active detection', () => {
+    manager.registerSection('section-1', mockElement);
+    manager.disableSection('section-1');
+    expect(manager.getSections()).not.toContain('section-1');
+  });
+
+  it('enables previously disabled section', () => {
+    manager.registerSection('section-1', mockElement);
+    manager.disableSection('section-1');
+    manager.enableSection('section-1');
+    expect(manager.getSections()).toContain('section-1');
+  });
+
+  it('unregisterSection cleans up properly', () => {
+    manager.registerSection('section-1', mockElement);
+    manager.unregisterSection('section-1');
+    expect(manager.getSections()).toHaveLength(0);
+  });
+
+  it('scrollToNext skips if no next section', async () => {
+    manager.registerSection('section-1', mockElement);
+    const result = await manager.scrollToNext();
+    expect(result).toBeUndefined();
+  });
+
+  it('scrollToPrev skips if no prev section', async () => {
+    manager.registerSection('section-1', mockElement);
+    const result = await manager.scrollToPrev();
+    expect(result).toBeUndefined();
+  });
+
+  it('handles scrollTo with hash option', () => {
+    manager = new ScrollManager({ hash: true });
+    manager.registerSection('section-1', mockElement);
+    expect(manager.getSections()).toContain('section-1');
+  });
+
+  it('handles scrollTo with keyboard option', () => {
+    manager = new ScrollManager({ keyboard: true });
+    manager.registerSection('section-1', mockElement);
+    expect(manager.getSections()).toContain('section-1');
+  });
+
+  it('handles rootMargin option', () => {
+    manager = new ScrollManager({ rootMargin: '-10% 0px -50% 0px' });
+    manager.registerSection('section-1', mockElement);
+    expect(manager.getSections()).toContain('section-1');
+  });
+
+  it('handles behavior auto', () => {
+    manager = new ScrollManager({ behavior: 'auto' });
+    manager.registerSection('section-1', mockElement);
+    vi.spyOn(mockElement, 'getBoundingClientRect').mockReturnValue({ top: 100 } as DOMRect);
+    manager.scrollTo('section-1');
+    expect(window.scrollTo).toHaveBeenCalled();
+  });
+
+  it('handles behavior instant', () => {
+    manager = new ScrollManager({ behavior: 'instant' });
+    manager.registerSection('section-1', mockElement);
+    vi.spyOn(mockElement, 'getBoundingClientRect').mockReturnValue({ top: 100 } as DOMRect);
+    manager.scrollTo('section-1');
+    expect(window.scrollTo).toHaveBeenCalled();
+  });
+
+  // ─── Scroll Direction & Progress ─────────────────────────────────
+
+  it('tracks scroll direction', () => {
+    Object.defineProperty(window, 'scrollY', { value: 100, writable: true, configurable: true });
+    manager.registerSection('section-1', mockElement);
+    const callback = vi.fn();
+    manager.onActiveChange(callback);
+    expect(callback).toHaveBeenCalled();
+  });
+
+  it('calls progress callback immediately', () => {
+    manager.registerSection('section-1', mockElement);
+    Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
+    vi.spyOn(mockElement, 'getBoundingClientRect').mockReturnValue({ top: 0, height: 500 } as DOMRect);
+    const callback = vi.fn();
+    manager.onProgressChange('section-1', callback);
+    expect(callback).toHaveBeenCalled();
+  });
+
+  it('scrollToNext works', async () => {
+    manager.registerSection('section-1', mockElement);
+    manager.registerSection('section-2', mockElement2);
+    vi.spyOn(mockElement2, 'getBoundingClientRect').mockReturnValue({ top: 500 } as DOMRect);
+    vi.spyOn(mockElement, 'getBoundingClientRect').mockReturnValue({ top: 100 } as DOMRect);
+    await manager.scrollToNext();
+    expect(window.scrollTo).toHaveBeenCalled();
+  });
+
+  it('scrollToPrev works', async () => {
+    manager.registerSection('section-1', mockElement);
+    manager.registerSection('section-2', mockElement2);
+    vi.spyOn(mockElement, 'getBoundingClientRect').mockReturnValue({ top: 100 } as DOMRect);
+    vi.spyOn(mockElement2, 'getBoundingClientRect').mockReturnValue({ top: 500 } as DOMRect);
+    manager.scrollTo('section-2');
+    await manager.scrollToPrev();
+    expect(window.scrollTo).toHaveBeenCalled();
+  });
+
+  it('getSections filters disabled', () => {
+    manager.registerSection('section-1', mockElement);
+    manager.disableSection('section-1');
+    const sections = manager.getSections();
+    expect(sections).not.toContain('section-1');
+  });
+
+  it('handles empty sections array', () => {
+    const sections = manager.getSections();
+    expect(sections).toEqual([]);
+  });
+
+  it('handles HTMLElement root option', () => {
+    const root = document.createElement('div');
+    manager = new ScrollManager({ root });
+    expect(manager).toBeDefined();
+  });
+
+  it('scrollToFirst returns promise for empty', async () => {
+    const result = await manager.scrollToFirst();
+    expect(result).toBeUndefined();
+  });
+
+  it('scrollToLast returns promise for empty', async () => {
+    const result = await manager.scrollToLast();
+    expect(result).toBeUndefined();
+  });
 });
