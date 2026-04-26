@@ -1,6 +1,6 @@
 {
   "name": "@jump-section/core",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "description": "Core scroll management library for jump-section",
   "keywords": [
     "scroll",
