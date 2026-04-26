@@ -13,10 +13,10 @@ export interface ScrollOptions {
   rootMargin?: string;
   /** 섹션 전환 후 해당 섹션으로 포커스를 이동합니다 */
   focusActiveSection?: boolean;
-  /** sticky 요소들의 ID 또는 element 배열입니다. 스크롤 위치 계산 시これらの 높이가 오프셋에 추가됩니다 */
+  /** sticky 요소들의 ID 또는 element 배열입니다. 스크롤 위치 계산 시 해당 요소들의 높이가 오프셋에서 차감됩니다 */
   stickyElements?: string[] | HTMLElement[];
   /** 커스텀 easing 함수입니다. t: 0~1 사이의 진행률, 반환값: 변환된 진행률 */
-  easing?: (t: number) => number | undefined;
+  easing?: (t: number) => number;
 }
 
 export interface ActiveChangeMeta {
@@ -58,7 +58,7 @@ export class ScrollManager {
       rootMargin: '-20% 0px -60% 0px',
       focusActiveSection: false,
       stickyElements: [],
-      easing: undefined as unknown as (t: number) => number | undefined,
+      easing: undefined as unknown as (t: number) => number,
       ...options,
     };
     this.initObserver();
@@ -93,7 +93,8 @@ export class ScrollManager {
       if (element) {
         const rect = element.getBoundingClientRect();
         const style = window.getComputedStyle(element);
-        if (style.position === ' sticky' || style.position === 'fixed') {
+        // 상단에 고정된 요소만 계산 (하단 fixed/sticky 요소 제외)
+        if ((style.position === 'sticky' || style.position === 'fixed') && rect.top <= 0) {
           totalHeight += rect.height;
         }
       }
@@ -342,7 +343,7 @@ export class ScrollManager {
     }
 
     element.setAttribute('role', 'region');
-    element.setAttribute('aria-labelledby', id);
+    element.setAttribute('aria-label', id);
 
     this.observer?.observe(element);
     this.resizeObserver?.observe(element);
@@ -451,7 +452,7 @@ export class ScrollManager {
     const stickyHeight = this.calculateStickyHeight();
 
     const targetScrollTop =
-      elementRect.top + this.currentScrollTop - rootRect.top + this.options.offset + stickyHeight;
+      elementRect.top + this.currentScrollTop - rootRect.top + this.options.offset - stickyHeight;
 
     const scrollTarget = this.options.root || window;
     const customEasing = this.options.easing;
@@ -516,7 +517,7 @@ export class ScrollManager {
       const animate = (currentTime: number) => {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        const easedProgress = easing(progress)!;
+        const easedProgress = easing(progress);
         const currentScrollTop = startScrollTop + distance * easedProgress;
 
         if (target === window) {

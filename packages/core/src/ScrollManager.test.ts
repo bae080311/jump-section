@@ -233,10 +233,10 @@ describe('ScrollManager', () => {
 
   // ─── ARIA & Focus ────────────────────────────────────────────────────────────
 
-  it('applies role and aria-labelledby on registerSection', () => {
+  it('applies role and aria-label on registerSection', () => {
     manager.registerSection('section-1', mockElement);
     expect(mockElement.getAttribute('role')).toBe('region');
-    expect(mockElement.getAttribute('aria-labelledby')).toBe('section-1');
+    expect(mockElement.getAttribute('aria-label')).toBe('section-1');
   });
 
   it('focuses element when focusActiveSection is enabled', async () => {
