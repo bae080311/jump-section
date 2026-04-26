@@ -11,6 +11,12 @@ export interface ScrollOptions {
   debug?: boolean;
   /** IntersectionObserver의 rootMargin을 커스터마이징합니다. 기본값: "-20% 0px -60% 0px" */
   rootMargin?: string;
+  /** 섹션 전환 후 해당 섹션으로 포커스를 이동합니다 */
+  focusActiveSection?: boolean;
+  /** sticky 요소들의 ID 또는 element 배열입니다. 스크롤 위치 계산 시 해당 요소들의 높이가 오프셋에서 차감됩니다 */
+  stickyElements?: string[] | HTMLElement[];
+  /** 커스텀 easing 함수입니다. t: 0~1 사이의 진행률, 반환값: 변환된 진행률 */
+  easing?: (t: number) => number;
 }
 
 export interface ActiveChangeMeta {
@@ -50,6 +56,9 @@ export class ScrollManager {
       keyboard: false,
       debug: false,
       rootMargin: '-20% 0px -60% 0px',
+      focusActiveSection: false,
+      stickyElements: [],
+      easing: undefined as unknown as (t: number) => number,
       ...options,
     };
     this.initObserver();
@@ -71,6 +80,26 @@ export class ScrollManager {
       return this.options.root.scrollTop;
     }
     return window.scrollY;
+  }
+
+  private calculateStickyHeight(): number {
+    if (!this.options.stickyElements || this.options.stickyElements.length === 0) {
+      return 0;
+    }
+
+    let totalHeight = 0;
+    for (const el of this.options.stickyElements) {
+      const element = typeof el === 'string' ? document.getElementById(el) : el;
+      if (element) {
+        const rect = element.getBoundingClientRect();
+        const style = window.getComputedStyle(element);
+        // 상단에 고정된 요소만 계산 (하단 fixed/sticky 요소 제외)
+        if ((style.position === 'sticky' || style.position === 'fixed') && rect.top <= 0) {
+          totalHeight += rect.height;
+        }
+      }
+    }
+    return totalHeight;
   }
 
   private initObserver() {
@@ -313,6 +342,9 @@ export class ScrollManager {
       element.id = id;
     }
 
+    element.setAttribute('role', 'region');
+    element.setAttribute('aria-label', id);
+
     this.observer?.observe(element);
     this.resizeObserver?.observe(element);
 
@@ -417,24 +449,35 @@ export class ScrollManager {
 
     const elementRect = element.getBoundingClientRect();
     const rootRect = this.options.root?.getBoundingClientRect() || { top: 0, left: 0 };
+    const stickyHeight = this.calculateStickyHeight();
 
     const targetScrollTop =
-      elementRect.top + this.currentScrollTop - rootRect.top + this.options.offset;
+      elementRect.top + this.currentScrollTop - rootRect.top + this.options.offset - stickyHeight;
 
     const scrollTarget = this.options.root || window;
+    const customEasing = this.options.easing;
+
+    if (typeof customEasing === 'function' && this.options.behavior === 'smooth') {
+      return this.customScrollTo(scrollTarget, targetScrollTop, element);
+    }
 
     return new Promise<void>((resolve) => {
       const scrollHandler = () => {
         if (Math.abs(this.currentScrollTop - targetScrollTop) < 1) {
           scrollTarget.removeEventListener('scroll', scrollHandler);
           clearTimeout(safetyTimeout);
+          if (this.options.focusActiveSection) {
+            element.focus();
+          }
           resolve();
         }
       };
 
-      // 스크롤이 완료되지 않는 경우를 대비한 안전 타임아웃
       const safetyTimeout = setTimeout(() => {
         scrollTarget.removeEventListener('scroll', scrollHandler);
+        if (this.options.focusActiveSection) {
+          element.focus();
+        }
         resolve();
       }, 1000);
 
@@ -442,7 +485,7 @@ export class ScrollManager {
         scrollTarget.addEventListener('scroll', scrollHandler, { passive: true });
       } else {
         clearTimeout(safetyTimeout);
-        resolve(); // 'auto' or 'instant' behavior resolves immediately
+        resolve();
       }
 
       if (this.options.root) {
@@ -456,6 +499,44 @@ export class ScrollManager {
           behavior: this.options.behavior,
         });
       }
+    });
+  }
+
+  private customScrollTo(
+    target: Window | HTMLElement,
+    targetScrollTop: number,
+    element: HTMLElement,
+  ): Promise<void> {
+    const startScrollTop = this.currentScrollTop;
+    const distance = targetScrollTop - startScrollTop;
+    const duration = 500;
+    const easing = this.options.easing!;
+    const startTime = performance.now();
+
+    return new Promise((resolve) => {
+      const animate = (currentTime: number) => {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easedProgress = easing(progress);
+        const currentScrollTop = startScrollTop + distance * easedProgress;
+
+        if (target === window) {
+          window.scrollTo({ top: currentScrollTop, behavior: 'auto' });
+        } else {
+          (target as HTMLElement).scrollTop = currentScrollTop;
+        }
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          if (this.options.focusActiveSection) {
+            element.focus();
+          }
+          resolve();
+        }
+      };
+
+      requestAnimationFrame(animate);
     });
   }
 
