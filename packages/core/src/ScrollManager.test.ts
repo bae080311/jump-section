@@ -415,7 +415,10 @@ describe('ScrollManager', () => {
   it('calls progress callback immediately', () => {
     manager.registerSection('section-1', mockElement);
     Object.defineProperty(window, 'scrollY', { value: 0, writable: true, configurable: true });
-    vi.spyOn(mockElement, 'getBoundingClientRect').mockReturnValue({ top: 0, height: 500 } as DOMRect);
+    vi.spyOn(mockElement, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      height: 500,
+    } as DOMRect);
     const callback = vi.fn();
     manager.onProgressChange('section-1', callback);
     expect(callback).toHaveBeenCalled();
@@ -466,5 +469,17 @@ describe('ScrollManager', () => {
   it('scrollToLast returns promise for empty', async () => {
     const result = await manager.scrollToLast();
     expect(result).toBeUndefined();
+  });
+
+  it('calculates sticky height for HTMLElement array', () => {
+    const stickyEl = document.createElement('div');
+    stickyEl.id = 'sticky';
+    document.body.appendChild(stickyEl);
+    vi.spyOn(window, 'getComputedStyle').mockReturnValue({
+      position: 'fixed',
+    } as CSSStyleDeclaration);
+    vi.spyOn(stickyEl, 'getBoundingClientRect').mockReturnValue({ height: 60 } as DOMRect);
+    manager = new ScrollManager({ stickyElements: [stickyEl] });
+    document.body.removeChild(stickyEl);
   });
 });
