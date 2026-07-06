@@ -1,0 +1,129 @@
+{
+  "name": "jump-section: Hermes Fix Callback",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hermes-fix-callback",
+        "responseMode": "onReceived",
+        "responseData": "noData"
+      },
+      "id": "webhook-callback",
+      "name": "Webhook: Hermes Fix Callback",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "webhookId": "jump-section-hermes-fix-callback"
+    },
+    {
+      "parameters": {
+        "jsCode": "// n8n->Hermes 방향(HERMES_WEBHOOK_SECRET)과는 별도의 시크릿으로 검증한다.\nconst item = $input.first().json;\nconst body = item.body || item;\nconst providedSecret = (item.headers && item.headers['x-hermes-callback-secret']) || '';\n\nif (providedSecret !== $env.HERMES_CALLBACK_SECRET) {\n  // 시크릿 불일치 - 조용히 폐기한다 (가짜 성공 콜백으로 오탐 반응이 달리는 것을 방지)\n  return [];\n}\n\nreturn [{ json: body }];"
+      },
+      "id": "verify-callback-secret",
+      "name": "콜백 시크릿 검증",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nlet content = null;\nif (data.status === 'success') content = 'rocket';\nelse if (data.status === 'error') content = '-1';\n// no_changes는 슬래시 커맨드의 원래 동작과 동일하게 추가 반응 없이 조용히 종료한다.\n\nif (!content) return [];\n\nreturn [{\n  json: {\n    ...data,\n    reactionContent: content,\n    // command가 'fix'이면 리뷰 코멘트 답장(/fix), 그 외(fix-build/fix-lint)는 일반 PR 코멘트다.\n    isReviewComment: data.command === 'fix'\n  }\n}];"
+      },
+      "id": "status-to-reaction",
+      "name": "상태 -> 반응 매핑",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "id": "is-review",
+              "leftValue": "={{ $json.isReviewComment }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ]
+        }
+      },
+      "id": "if-review-comment",
+      "name": "IF: 리뷰 코멘트?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $json.repo.owner }}/{{ $json.repo.name }}/pulls/comments/{{ $json.comment.id }}/reactions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { content: $json.reactionContent } }}",
+        "options": {}
+      },
+      "id": "react-review-comment",
+      "name": "GitHub: 리뷰 코멘트 반응",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://api.github.com/repos/{{ $json.repo.owner }}/{{ $json.repo.name }}/issues/comments/{{ $json.comment.id }}/reactions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { content: $json.reactionContent } }}",
+        "options": {}
+      },
+      "id": "react-issue-comment",
+      "name": "GitHub: PR 코멘트 반응",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1120, 400]
+    }
+  ],
+  "connections": {
+    "Webhook: Hermes Fix Callback": {
+      "main": [[{ "node": "콜백 시크릿 검증", "type": "main", "index": 0 }]]
+    },
+    "콜백 시크릿 검증": {
+      "main": [[{ "node": "상태 -> 반응 매핑", "type": "main", "index": 0 }]]
+    },
+    "상태 -> 반응 매핑": {
+      "main": [[{ "node": "IF: 리뷰 코멘트?", "type": "main", "index": 0 }]]
+    },
+    "IF: 리뷰 코멘트?": {
+      "main": [
+        [{ "node": "GitHub: 리뷰 코멘트 반응", "type": "main", "index": 0 }],
+        [{ "node": "GitHub: PR 코멘트 반응", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "tags": [{ "name": "jump-section" }, { "name": "comment-fix" }, { "name": "hermes" }]
+}
