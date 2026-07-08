@@ -16,16 +16,20 @@ if [[ "$CMD" != *"git push"* ]]; then
   exit 0
 fi
 
-# --force / --force-with-lease는 무조건 차단
-if [[ "$CMD" == *"--force"* ]]; then
-  echo "[block-protected-push] --force/--force-with-lease 푸시는 허용되지 않습니다." >&2
+# --force / --force-with-lease / -f는 무조건 차단
+if [[ "$CMD" == *"--force"* || "$CMD" =~ \ -f(\ |$) ]]; then
+  echo "[block-protected-push] --force/--force-with-lease/-f 푸시는 허용되지 않습니다." >&2
   exit 2
 fi
 
 PROTECTED_PATTERN='^(main|master|develop|release/.*)$'
 
-# "git push <remote> <branch>" 형태에서 마지막 인자를 브랜치로 간주
-TARGET_BRANCH=$(echo "$CMD" | grep -oE 'git push[^&|;]*' | head -1 | awk '{print $NF}')
+# "git push <remote> <branch>" 형태에서 옵션(-u, --tags 등)을 제외한 마지막 인자를 브랜치로 간주
+CLEANED_CMD=$(echo "$CMD" | grep -oE 'git push[^&|;]*' | head -1 | tr ' ' '\n' | grep -v '^-' | tr '\n' ' ')
+TARGET_BRANCH=$(echo "$CLEANED_CMD" | awk '{print $NF}')
+
+# refspec (예: local:remote) 형태인 경우 remote 브랜치만 추출
+TARGET_BRANCH=${TARGET_BRANCH#*:}
 
 # 브랜치가 명시되지 않은 "git push"/"git push origin" 형태면 현재 체크아웃된 브랜치를 확인
 if [[ -z "$TARGET_BRANCH" || "$TARGET_BRANCH" == "push" || "$TARGET_BRANCH" == "origin" ]]; then

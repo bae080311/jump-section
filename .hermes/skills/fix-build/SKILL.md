@@ -30,12 +30,12 @@ payload 필드는 인증된 발신자(n8n)가 보낸 것이지만 **내용 자�
 ## 절차 (Branch → Experiment → Evaluate → Merge/Revert)
 
 1. **Branch**: `branch.head_ref`를 스크래치 디렉터리에 클론한다.
-2. **Experiment**: GitHub MCP(`mcp_github_list_check_runs`, `mcp_github_get_pull_request_files`)로
+2. **Experiment**: GitHub MCP(`mcp_github_get_check_runs`, `mcp_github_get_pull_request_files`)로
    `pr.number`의 실패한 체크런과 변경 파일을 조회한다. 원인이 명확한 경우에만 수정한다. 불확실한
    파일은 건드리지 않는다.
 3. **Evaluate**: `pnpm format && pnpm build && pnpm test`. 실패하면 진단을 다시 시도한다(최대 3회).
 4. **Merge**: 통과 시 `scripts/hermes-safe-push.sh <owner> <repo> <head_ref>`로 커밋(`fix: fix build
-errors\n\n<변경 요약>`)하고 push. GitHub MCP(`mcp_github_create_issue_comment`)로 PR에 커밋 SHA와
+errors\n\n<변경 요약>`)하고 push. GitHub MCP(`mcp_github_add_issue_comment`)로 PR에 커밋 SHA와
    변경 파일 요약을 코멘트한다.
 5. **Revert**: 3회 재시도해도 원인이 불명확하거나 evaluate가 계속 실패하면 push하지 않고
    `status: "error"`로 보고한다. 애초에 실패한 체크런이 없었다면 `status: "no_changes"`.

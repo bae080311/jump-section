@@ -24,7 +24,9 @@ fi
 
 # 다른 저장소로 오발송되는 것을 방지 (payload 검증 원칙: 내용은 신뢰하지 않는다)
 REMOTE_URL=$(git remote get-url origin 2>/dev/null || echo "")
-if [[ "$REMOTE_URL" != *"${OWNER}/${REPO}"* ]]; then
+REMOTE_URL_LOWER=$(echo "$REMOTE_URL" | tr '[:upper:]' '[:lower:]')
+EXPECTED_LOWER=$(echo "${OWNER}/${REPO}" | tr '[:upper:]' '[:lower:]')
+if [[ "$REMOTE_URL_LOWER" != *"$EXPECTED_LOWER"* ]]; then
   echo "[hermes-safe-push] origin(${REMOTE_URL})이 예상 저장소(${OWNER}/${REPO})와 일치하지 않습니다." >&2
   exit 1
 fi

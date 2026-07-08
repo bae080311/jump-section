@@ -34,9 +34,9 @@ mcp_servers:
     allowed_tools:
       - mcp_github_get_pull_request
       - mcp_github_get_pull_request_files
-      - mcp_github_list_check_runs
-      - mcp_github_create_issue_comment
-      - mcp_github_reply_to_review_comment
+      - mcp_github_get_check_runs
+      - mcp_github_add_issue_comment
+      - mcp_github_add_reply_to_pull_request_comment
       - mcp_github_add_reaction
       # repo 설정/워크플로우 변경 도구는 명시적으로 제외한다 (최소 권한 원칙)
 
