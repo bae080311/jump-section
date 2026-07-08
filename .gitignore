@@ -8,3 +8,7 @@ coverage/
 # n8n
 .n8n/.env
 .n8n/n8n_data/
+
+# hermes
+.hermes/.env
+.hermes/hermes_data/

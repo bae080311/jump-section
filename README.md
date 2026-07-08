@@ -229,7 +229,7 @@ pnpm format
 
 ## AI Pipeline
 
-이 프로젝트는 n8n + Gemini 기반의 AI 파이프라인이 연동되어 있습니다.
+이 프로젝트는 n8n 기반의 AI 파이프라인이 연동되어 있습니다.
 
 ### 자동 수정 (auto-fix)
 
@@ -237,7 +237,9 @@ Gemini Code Assist가 PR 리뷰를 제출하면 자동으로 실행됩니다. �
 
 ### PR 코멘트 커맨드 (comment-fix)
 
-PR 코멘트에 아래 커맨드를 입력하면 Gemini가 수정 커밋을 올립니다.
+PR 코멘트에 아래 커맨드를 입력하면 [Hermes Agent](https://github.com/NousResearch/hermes-agent)가 원인을
+직접 진단(GitHub MCP)하고 수정 커밋을 올립니다. n8n은 트리거 릴레이와 결과 반응(🚀/-1)만 담당합니다 —
+자세한 구성은 `.hermes/README.md`를 참고하세요.
 
 | 커맨드       | 설명                                                         |
 | ------------ | ------------------------------------------------------------ |
