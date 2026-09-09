@@ -21,6 +21,21 @@ jobs:
           ref: ${{ inputs.branch }}
           fetch-depth: 1
 
+      # 이 워크플로우는 contents:write 로 커밋을 만들고 push 한다. 가드가 없으면
+      # branch: main 으로 dispatch 하는 것만으로 보호 브랜치에 직접 커밋된다 —
+      # CLAUDE.md "AI 파이프라인 거버넌스" 의 불변식을 저장소에서 유일하게 우회하는 경로였다.
+      # 패턴은 scripts/protected-branches.sh (SSOT) 에서 가져온다.
+      - name: 보호 브랜치 가드
+        env:
+          TARGET_BRANCH: ${{ inputs.branch }}
+        run: |
+          # shellcheck source=scripts/protected-branches.sh
+          source scripts/protected-branches.sh
+          if [[ "$TARGET_BRANCH" =~ $PROTECTED_PATTERN ]]; then
+            echo "::error::보호 브랜치($TARGET_BRANCH)에는 자동 포맷 커밋을 push할 수 없습니다. PR 브랜치를 지정하세요."
+            exit 1
+          fi
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v3
         with:

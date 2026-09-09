@@ -43,7 +43,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add packages/*/package.json
           git commit -m "chore: bump version [skip ci]" || exit 0
-          git push || exit 0
+          # push 실패는 삼키지 않는다. main 브랜치 보호 규칙(PR 필수)을
+          # 켜면 이 push가 막히는데, || exit 0 이 그것까지 삼켜서 버전 bump 커밋은 사라지고
+          # 다음 스텝의 npm publish 는 그대로 실행됐다 — npm 에 main 에 없는 버전이 올라간다.
+          git push
 
       - name: Publish core to npm
         run: cd packages/core && npm publish --access public
@@ -59,7 +62,10 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pnpm-lock.yaml
           git commit -m "chore: update lockfile [skip ci]" || exit 0
-          git push || exit 0
+          # push 실패는 삼키지 않는다. main 브랜치 보호 규칙(PR 필수)을
+          # 켜면 이 push가 막히는데, || exit 0 이 그것까지 삼켜서 버전 bump 커밋은 사라지고
+          # 다음 스텝의 npm publish 는 그대로 실행됐다 — npm 에 main 에 없는 버전이 올라간다.
+          git push
 
       - name: Publish react, vue, and svelte to npm
         run: |
