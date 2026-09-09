@@ -229,23 +229,33 @@ pnpm format
 
 ## AI Pipeline
 
-이 프로젝트는 n8n 기반의 AI 파이프라인이 연동되어 있습니다.
+GitHub Actions에서 [`anthropics/claude-code-action`](https://github.com/anthropics/claude-code-action)이
+동작합니다. 상주 서버는 없습니다.
 
-### 자동 수정 (auto-fix)
+| 워크플로우            | 트리거                     | 하는 일                                     |
+| --------------------- | -------------------------- | ------------------------------------------- |
+| `weekly-planning.yml` | 매주 월요일 09:00 (KST)    | 저장소 상태를 보고 개선 이슈를 제안         |
+| `ai-implement.yml`    | 이슈에 `ai-implement` 라벨 | 구현 + 테스트 + 문서까지 하고 Draft PR 생성 |
+| `claude.yml`          | 이슈/PR에서 `@claude` 멘션 | 빌드 에러 수정, 리뷰 코멘트 반영, 질문 응답 |
+| `auto-format.yml`     | 수동 (`workflow_dispatch`) | Prettier 포맷만 적용 (LLM 미사용)           |
 
-Gemini Code Assist가 PR 리뷰를 제출하면 자동으로 실행됩니다. 리뷰 코멘트와 CI 실패를 분석해 수정 커밋을 올립니다.
+기본 흐름은 **제안 → 라벨 → 구현 → 리뷰**입니다. 주간 기획이 만든 이슈를 확인하고 `ai-implement`
+라벨을 붙이면 Draft PR까지 자동으로 올라오고, 사람이 리뷰합니다. PR에서 고칠 게 있으면 코멘트로
+`@claude`를 멘션하세요.
 
-### PR 코멘트 커맨드 (comment-fix)
+```
+@claude CI 빌드 에러를 고쳐줘
+@claude 이 리뷰 코멘트 반영해줘
+```
 
-PR 코멘트에 아래 커맨드를 입력하면 [Hermes Agent](https://github.com/NousResearch/hermes-agent)가 원인을
-직접 진단(GitHub MCP)하고 수정 커밋을 올립니다. n8n은 트리거 릴레이와 결과 반응(🚀/-1)만 담당합니다 —
-자세한 구성은 `.hermes/README.md`를 참고하세요.
+AI가 만든 브랜치는 반드시 사람이 리뷰한 뒤 머지합니다 (`CLAUDE.md`「AI 파이프라인 거버넌스」).
 
-| 커맨드       | 설명                                                         |
-| ------------ | ------------------------------------------------------------ |
-| `/fix-build` | CI 빌드/타입 에러 분석 후 수정                               |
-| `/fix-lint`  | PR 변경 파일에 Prettier 포맷 적용                            |
-| `/fix`       | 리뷰 코멘트에 답장으로 사용 — 해당 코멘트 내용을 반영해 수정 |
+### 설정
+
+1. [Claude GitHub App](https://github.com/apps/claude) 설치
+2. `claude setup-token` 으로 토큰을 만들어 저장소 Secrets에 `CLAUDE_CODE_OAUTH_TOKEN` 으로 추가
+   (구독 기반이라 API 과금이 없습니다)
+3. 저장소 Labels에 `ai-proposal`, `ai-implement` 추가
 
 ## Contributing
 
