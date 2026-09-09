@@ -3,3 +3,5 @@ dist
 build
 .next
 coverage
+# Next.js 생성 파일 (docs/.gitignore 에도 있다)
+next-env.d.ts
