@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/block-protected-push.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/scripts/block-protected-push.sh"
           }
         ]
       }
@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/scripts/post-pr-coverage.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/scripts/post-pr-coverage.sh"
           }
         ]
       }

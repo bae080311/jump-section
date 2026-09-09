@@ -36,7 +36,7 @@ fi
 BUNDLE_TABLE=""
 if pnpm build &>/dev/null; then
   BUNDLE_TABLE="| 파일 | 크기 | gzip |"$'\n'"|------|------|------|"
-  for f in packages/*/dist/*.{js,mjs} 2>/dev/null; do
+  for f in packages/*/dist/*.{js,mjs}; do
     [[ -f "$f" ]] || continue
     SIZE_BYTES=$(wc -c < "$f")
     SIZE_KB=$(awk "BEGIN {printf \"%.1f KB\", $SIZE_BYTES/1024}")

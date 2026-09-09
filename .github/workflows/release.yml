@@ -21,12 +21,29 @@ jobs:
         with:
           version: 9
 
+      # npm Trusted Publishing(OIDC)은 npm >= 11.5.1 을 요구한다. Node 20/22 가 번들하는
+      # npm 은 10.x 라 미달이므로 Node 24(npm 11.x 번들)를 쓴다. 루트 package.json 에
+      # engines 제약이 없고, 배포 산출물의 타깃은 tsup 의 es2015 설정이 정하므로
+      # 러너 Node 버전을 올려도 패키지 호환성에는 영향이 없다.
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
+
+      # npm 이 11.5.1 미만이면 OIDC 를 쓰지 못하고 익명으로 publish 를 시도하다 404 로 죽는다.
+      # 그 404 는 npm 이 인증 실패를 감춰서 내려주는 응답이라 원인 파악이 어렵다 —
+      # 실제로 이 저장소의 릴리스가 그 404 로 두 달간 막혀 있었다. 여기서 먼저 끊는다.
+      - name: npm 버전 확인 (trusted publishing 요구사항)
+        run: |
+          REQUIRED=11.5.1
+          ACTUAL=$(npm -v)
+          echo "node $(node -v) / npm $ACTUAL"
+          if [ "$(printf '%s\n%s\n' "$REQUIRED" "$ACTUAL" | sort -V | head -1)" != "$REQUIRED" ]; then
+            echo "::error::npm $ACTUAL < $REQUIRED — trusted publishing 을 쓸 수 없습니다."
+            exit 1
+          fi
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -43,12 +60,18 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add packages/*/package.json
           git commit -m "chore: bump version [skip ci]" || exit 0
-          git push || exit 0
+          # push 실패는 삼키지 않는다. main 브랜치 보호 규칙(PR 필수)을
+          # 켜면 이 push가 막히는데, || exit 0 이 그것까지 삼켜서 버전 bump 커밋은 사라지고
+          # 다음 스텝의 npm publish 는 그대로 실행됐다 — npm 에 main 에 없는 버전이 올라간다.
+          git push
 
+      # NPM_TOKEN 을 쓰지 않는다. Trusted Publishing 이 id-token: write 로 발급된 GitHub
+      # OIDC 토큰을 registry 와 교환한다. 90일마다 만료되던 시크릿이 사라지고, 공개 저장소 +
+      # 공개 패키지라 provenance 서명도 자동으로 붙는다.
+      # npmjs.com 의 각 패키지 Trusted Publisher 설정에 이 파일명(release.yml)이 등록돼
+      # 있어야 한다 — 워크플로우 파일 이름을 바꾸면 배포가 깨진다.
       - name: Publish core to npm
         run: cd packages/core && npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Update lockfile after core publish
         run: pnpm install --no-frozen-lockfile
@@ -59,12 +82,13 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add pnpm-lock.yaml
           git commit -m "chore: update lockfile [skip ci]" || exit 0
-          git push || exit 0
+          # push 실패는 삼키지 않는다. main 브랜치 보호 규칙(PR 필수)을
+          # 켜면 이 push가 막히는데, || exit 0 이 그것까지 삼켜서 버전 bump 커밋은 사라지고
+          # 다음 스텝의 npm publish 는 그대로 실행됐다 — npm 에 main 에 없는 버전이 올라간다.
+          git push
 
       - name: Publish react, vue, and svelte to npm
         run: |
           cd packages/react && npm publish --access public
           cd ../vue && npm publish --access public
           cd ../svelte && npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
