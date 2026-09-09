@@ -27,7 +27,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,md}\"",
     "prepare": "husky",
     "version:bump": "node scripts/bump-version.js",
-    "bench": "vitest bench --reporter=verbose"
+    "bench": "vitest bench --run"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.2",
