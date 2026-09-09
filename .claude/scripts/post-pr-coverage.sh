@@ -50,8 +50,18 @@ fi
 
 # ── 벤치마크 실행 ─────────────────────────────────────────────────────────────
 BENCH_OUTPUT=""
-if BENCH_OUTPUT=$(pnpm bench 2>&1); then
-  BENCH_RESULT=$(echo "$BENCH_OUTPUT" | grep -E "(bench|ops/sec|✓|×)" | head -20 || echo "$BENCH_OUTPUT" | tail -20)
+# NO_COLOR 로 색상 코드를 애초에 막고, 그래도 남는 ANSI 는 sed 로 걷어낸다.
+# 코드가 남으면 PR 코멘트에 ^[[32m 같은 문자열이 그대로 찍혀 읽을 수 없다.
+# vitest 는 진행 상황을 다시 그리면서 같은 줄을 여러 번 출력하므로 awk 로 중복도 제거한다.
+if BENCH_OUTPUT=$(NO_COLOR=1 FORCE_COLOR=0 pnpm bench 2>&1); then
+  BENCH_RESULT=$(
+    printf '%s\n' "$BENCH_OUTPUT" \
+      | sed $'s/\033\[[0-9;]*[a-zA-Z]//g' \
+      | grep -E "(bench|ops/sec|✓|×)" \
+      | awk '!seen[$0]++' \
+      | head -20
+  )
+  [[ -n "$BENCH_RESULT" ]] || BENCH_RESULT=$(printf '%s\n' "$BENCH_OUTPUT" | tail -20)
 else
   BENCH_RESULT="⚠️ 벤치마크 실패"$'\n'"$(echo "$BENCH_OUTPUT" | tail -5)"
 fi
