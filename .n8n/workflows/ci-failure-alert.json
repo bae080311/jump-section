@@ -1,0 +1,92 @@
+{
+  "name": "jump-section: CI Failure Alert",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": { "interval": [{ "field": "minutes", "minutesInterval": 15 }] }
+      },
+      "id": "schedule",
+      "name": "Schedule (15분마다)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300],
+      "notes": "웹훅이 아니라 폴링이다. GitHub은 실패한 웹훅 전달을 재시도하지 않으므로, 로컬에서 돌리는 n8n이 꺼져 있는 동안 온 알림은 영구히 유실된다. 폴링은 다운타임이 알림을 늦추기만 하고 잃지 않으며, outbound 요청만 쓰므로 터널(ngrok)도 필요 없다.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://api.github.com/repos/bae080311/jump-section/actions/runs",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "status", "value": "failure" },
+            { "name": "per_page", "value": "30" }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Accept", "value": "application/vnd.github+json" },
+            { "name": "X-GitHub-Api-Version", "value": "2022-11-28" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.GITHUB_TOKEN }}" },
+            { "name": "User-Agent", "value": "n8n-jump-section" }
+          ]
+        },
+        "options": { "timeout": 20000 }
+      },
+      "id": "list-failed-runs",
+      "name": "GitHub: 실패한 실행 조회",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [460, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "// 이미 알린 실행을 다시 알리지 않기 위해 마지막으로 본 run id 를 워크플로우 static data 에\n// 보관한다. n8n 이 실행 간에 유지해주므로 Data Store 를 따로 붙이지 않아도 된다.\nconst store = $getWorkflowStaticData('global');\nconst runs = $input.first().json.workflow_runs || [];\n\n// GitHub 은 최신순으로 준다. id 는 단조 증가하므로 비교 기준으로 쓸 수 있다.\nconst lastSeen = Number(store.lastSeenRunId || 0);\n\n// 첫 실행이면 과거 전체를 쏟아내지 않는다 — 기준선만 세우고 조용히 끝낸다.\nif (!lastSeen) {\n  store.lastSeenRunId = runs.length ? Math.max(...runs.map((r) => r.id)) : 0;\n  return [];\n}\n\nconst fresh = runs.filter((r) => r.id > lastSeen);\nif (fresh.length === 0) return [];\n\nstore.lastSeenRunId = Math.max(...fresh.map((r) => r.id));\n\n// 오래된 것부터 알린다(읽는 순서가 자연스럽다).\nfresh.sort((a, b) => a.id - b.id);\n\nreturn fresh.map((r) => ({\n  json: {\n    name: r.name,\n    runNumber: r.run_number,\n    branch: r.head_branch,\n    event: r.event,\n    url: r.html_url,\n    sha: (r.head_sha || '').slice(0, 7),\n    commitMessage: (r.head_commit && r.head_commit.message || '').split('\\n')[0].slice(0, 120),\n    actor: (r.actor && r.actor.login) || '?',\n    createdAt: r.created_at,\n  },\n}));"
+      },
+      "id": "filter-new",
+      "name": "새 실패만 추리기",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "notes": "첫 실행에서는 기준선만 세우고 아무것도 알리지 않는다. 그러지 않으면 도입 즉시 과거 실패 전체가 Discord 로 쏟아진다.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.DISCORD_WEBHOOK_URL }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { embeds: [{ title: '🔴 ' + $json.name + ' 실패', url: $json.url, description: '`' + $json.sha + '` ' + $json.commitMessage, color: 15158332, fields: [{ name: '브랜치', value: $json.branch || '?', inline: true }, { name: '트리거', value: $json.event || '?', inline: true }, { name: '실행자', value: $json.actor, inline: true }], footer: { text: 'jump-section • run #' + $json.runNumber }, timestamp: $json.createdAt }] } }}",
+        "options": { "timeout": 20000 }
+      },
+      "id": "discord-alert",
+      "name": "Discord: 실패 알림",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    }
+  ],
+  "connections": {
+    "Schedule (15분마다)": {
+      "main": [[{ "node": "GitHub: 실패한 실행 조회", "type": "main", "index": 0 }]]
+    },
+    "GitHub: 실패한 실행 조회": {
+      "main": [[{ "node": "새 실패만 추리기", "type": "main", "index": 0 }]]
+    },
+    "새 실패만 추리기": {
+      "main": [[{ "node": "Discord: 실패 알림", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "tags": ["jump-section", "observability"]
+}
