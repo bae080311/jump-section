@@ -1,0 +1,42 @@
+# 로컬 전용 n8n. 관측·알림 워크플로우만 돌린다(.n8n/workflows/).
+#
+# 웹훅을 받지 않는다 — 모든 워크플로우가 GitHub API 를 폴링하는 outbound 방식이다.
+# 그래서 ngrok 같은 터널이 필요 없고, 포트를 외부에 열지도 않는다.
+# 저장소를 바꾸는 자동화는 GitHub Actions 가 맡는다(.github/workflows/).
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: jump-section-n8n
+    restart: unless-stopped
+    ports:
+      # 루프백에만 바인딩한다. 인바운드 웹훅이 필요 없으므로 외부에 노출할 이유가 없다.
+      - '127.0.0.1:5678:5678'
+    environment:
+      - N8N_HOST=127.0.0.1
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - GENERIC_TIMEZONE=Asia/Seoul
+      - TZ=Asia/Seoul
+      # 값이 없으면 컨테이너를 띄우지 않는다. 기본값을 두면(이전엔 changeme123 이었다)
+      # 아무도 바꾸지 않은 채로 굳는다.
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY:?N8N_ENCRYPTION_KEY 가 .n8n/.env 에 필요합니다}
+      - EXECUTIONS_PROCESS=main
+      - N8N_LOG_LEVEL=info
+      # 워크플로우가 $env.GITHUB_TOKEN / $env.DISCORD_WEBHOOK_URL 을 읽는 데 필요하다.
+      # 이 설정은 Code 노드가 컨테이너의 모든 환경변수를 읽을 수 있게 하므로, .env 에는
+      # 이 인스턴스가 실제로 쓰는 값만 둔다.
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      # NODE_FUNCTION_ALLOW_BUILTIN 은 두지 않는다 — 현재 Code 노드는 require 를 쓰지 않는다.
+      # 필요해지면 그때 필요한 모듈만 추가한다.
+      # 실행 이력이 무한히 쌓이지 않게 한다(로컬 디스크와 UI 응답성 보호).
+      - EXECUTIONS_DATA_PRUNE=true
+      - EXECUTIONS_DATA_MAX_AGE=336 # 시간 단위 = 14일
+    volumes:
+      - n8n_data:/home/node/.n8n
+    env_file:
+      - .env
+
+volumes:
+  n8n_data:
+    driver: local
