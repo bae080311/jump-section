@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 # PostToolUse hook: gh pr create 실행 후 커버리지 + 번들 사이즈 + 벤치마크를 PR 코멘트로 게시
+#
+# 회귀 테스트: bash .claude/scripts/post-pr-coverage.test.sh
 set -euo pipefail
+
+# 색상 코드를 애초에 만들지 않는다. 여기 한 곳에서 끄면 coverage·build·bench 전부
+# 적용된다 — 이전에는 bench 에만 걸어서, 커버리지 실패 경로(가장 읽어야 할 때)에는
+# ANSI 가 그대로 PR 코멘트에 찍혔다.
+export NO_COLOR=1 FORCE_COLOR=0
+
+# set -e 로 중단되면 아무 흔적도 남지 않아 "훅이 안 돈 것"과 구별되지 않는다.
+# CLAUDE.md「공통 규칙」: 실패는 관측 가능해야 한다.
+trap 'echo "[post-pr-coverage] 예기치 않게 중단됨 (line $LINENO)" >&2' ERR
 
 # ── stdin JSON 파싱 ──────────────────────────────────────────────────────────
 INPUT=$(cat)
@@ -51,7 +62,11 @@ fi
 # ── 벤치마크 실행 ─────────────────────────────────────────────────────────────
 BENCH_OUTPUT=""
 if BENCH_OUTPUT=$(pnpm bench 2>&1); then
-  BENCH_RESULT=$(echo "$BENCH_OUTPUT" | grep -E "(bench|ops/sec|✓|×)" | head -20 || echo "$BENCH_OUTPUT" | tail -20)
+  # 패턴으로 고르지 않는다. 이전의 grep -E "(bench|ops/sec|✓|×)" 는 vitest 4 의
+  # 실측 행(`· getActiveId  50,897,820.27 ...`)과 비교 요약(`2.62x faster than ...`)을
+  # 전부 버려서, Benchmark 섹션에 측정값이 하나도 없었다. 패턴은 리포터 형식이 바뀌면
+  # 또 조용히 비어버리므로, 표가 항상 출력 끝에 온다는 성질을 그대로 쓴다.
+  BENCH_RESULT=$(printf '%s\n' "$BENCH_OUTPUT" | tail -24)
 else
   BENCH_RESULT="⚠️ 벤치마크 실패"$'\n'"$(echo "$BENCH_OUTPUT" | tail -5)"
 fi
