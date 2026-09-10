@@ -69,18 +69,20 @@
       "position": [460, 300],
       "retryOnFail": true,
       "maxTries": 3,
-      "waitBetweenTries": 5000
+      "waitBetweenTries": 5000,
+      "notes": "status=failure 만 조회한다. timed_out / cancelled / startup_failure 는 이 저장소 이력에 0건이라 넣지 않았다 — GitHub API 의 status 는 값을 하나만 받아서, 늘리려면 요청을 그만큼 더 보내야 한다. 장시간 도는 잡에서 타임아웃이 실제로 발생하기 시작하면 그때 추가한다.",
+      "notesInFlow": true
     },
     {
       "parameters": {
-        "jsCode": "// GitHub 실행 목록에서 아직 알리지 않은 실패만 골라 Discord 페이로드까지 만든다.\n//\n// 중복 방지: 마지막으로 본 run id 를 워크플로우 static data 에 보관한다.\n// n8n 이 실행 간에 유지해주므로 Data Store 를 따로 붙이지 않아도 된다.\nconst store = $getWorkflowStaticData('global');\nconst runs = $input.first().json.workflow_runs || [];\nconst lastSeen = Number(store.lastSeenRunId || 0);\n\n// 첫 실행이면 과거 실패 전체를 쏟아내지 않는다 — 기준선만 세우고 조용히 끝낸다.\nif (!lastSeen) {\n  store.lastSeenRunId = runs.length ? Math.max(...runs.map((r) => r.id)) : 0;\n  return [];\n}\n\n// run id 는 단조 증가하므로 \"이보다 큰가\"로 새 실패를 가릴 수 있다.\nconst fresh = runs.filter((r) => r.id > lastSeen);\nif (fresh.length === 0) return [];\nstore.lastSeenRunId = Math.max(...fresh.map((r) => r.id));\nfresh.sort((a, b) => a.id - b.id); // 오래된 것부터 읽히도록\n\n// Discord 임베드도 여기서 조립한다. HTTP 노드의 한 줄 표현식으로 두면 읽을 수도,\n// prettier 로 포맷할 수도, 테스트할 수도 없다 — 실제로 551자 한 줄이었다.\nconst firstLine = (msg) => (msg || '').split('\\n')[0].slice(0, 120);\n\nreturn fresh.map((r) => ({\n  json: {\n    embeds: [\n      {\n        title: `🔴 ${r.name} 실패`,\n        url: r.html_url,\n        description: `\\`${(r.head_sha || '').slice(0, 7)}\\` ${firstLine(r.head_commit && r.head_commit.message)}`,\n        color: 15158332,\n        fields: [\n          { name: '브랜치', value: r.head_branch || '?', inline: true },\n          { name: '트리거', value: r.event || '?', inline: true },\n          { name: '실행자', value: (r.actor && r.actor.login) || '?', inline: true },\n        ],\n        footer: { text: `jump-section • run #${r.run_number}` },\n        timestamp: r.created_at,\n      },\n    ],\n  },\n}));"
+        "jsCode": "// GitHub 실행 목록에서 아직 알리지 않은 실패만 골라 Discord 메시지 하나로 묶는다.\n//\n// 중복 방지: 마지막으로 본 run id 를 워크플로우 static data 에 보관한다.\n// n8n 이 실행 간에 유지해주므로 Data Store 를 따로 붙이지 않아도 된다.\nconst store = $getWorkflowStaticData('global');\nconst runs = $input.first().json.workflow_runs || [];\nconst lastSeen = Number(store.lastSeenRunId || 0);\n\n// 첫 실행이면 과거 실패 전체를 쏟아내지 않는다 — 기준선만 세우고 조용히 끝낸다.\nif (!lastSeen) {\n  store.lastSeenRunId = runs.length ? Math.max(...runs.map((r) => r.id)) : 0;\n  return [];\n}\n\n// run id 는 단조 증가하므로 \"이보다 큰가\"로 새 실패를 가릴 수 있다.\nconst fresh = runs.filter((r) => r.id > lastSeen);\nif (fresh.length === 0) return [];\nstore.lastSeenRunId = Math.max(...fresh.map((r) => r.id));\nfresh.sort((a, b) => a.id - b.id); // 오래된 것부터 읽히도록\n\n// 항목마다 따로 보내지 않는다. n8n 의 HTTP 노드는 item 당 한 번 실행되므로,\n// 한 번에 3개가 깨지면 Discord 알림이 3개 따로 온다(Discord 는 웹훅당 초당 요청도\n// 제한한다). Discord 는 한 메시지에 임베드를 10개까지 받으므로 묶어서 한 번만 보낸다.\nconst MAX_EMBEDS = 10;\nconst shown = fresh.slice(0, MAX_EMBEDS);\nconst overflow = fresh.length - shown.length;\n\nconst firstLine = (msg) => (msg || '').split('\\n')[0].slice(0, 120);\n\nconst embeds = shown.map((r) => ({\n  title: `🔴 ${r.name} 실패`,\n  url: r.html_url,\n  description: `\\`${(r.head_sha || '').slice(0, 7)}\\` ${firstLine(r.head_commit && r.head_commit.message)}`,\n  color: 15158332,\n  fields: [\n    { name: '브랜치', value: r.head_branch || '?', inline: true },\n    { name: '트리거', value: r.event || '?', inline: true },\n    { name: '실행자', value: (r.actor && r.actor.login) || '?', inline: true },\n  ],\n  footer: { text: `jump-section • run #${r.run_number}` },\n  timestamp: r.created_at,\n}));\n\n// 10개를 넘으면 잘렸다는 사실 자체를 알린다 — 조용히 버리면 알림의 의미가 없다.\nconst payload = { embeds };\nif (overflow > 0) {\n  payload.content = `⚠️ 새 실패 ${fresh.length}건 중 ${MAX_EMBEDS}건만 표시합니다 (+${overflow}건).`;\n}\n\nreturn [{ json: payload }];"
       },
       "id": "filter-new",
-      "name": "새 실패 추리기 + 임베드 조립",
+      "name": "새 실패 → 알림 1건으로 묶기",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [680, 300],
-      "notes": "첫 실행에서는 기준선만 세우고 아무것도 알리지 않는다. 그러지 않으면 도입 즉시 과거 실패 전체가 Discord 로 쏟아진다. 회귀 테스트: node .n8n/workflows/ci-failure-alert.test.mjs",
+      "notes": "첫 실행에서는 기준선만 세우고 아무것도 알리지 않는다(도입 즉시 과거 실패 전체가 쏟아지는 것을 막는다). 여러 건이 한꺼번에 깨져도 Discord 메시지는 한 개다. 회귀 테스트: node .n8n/workflows/ci-failure-alert.test.mjs",
       "notesInFlow": true
     },
     {
@@ -120,14 +122,14 @@
       "main": [
         [
           {
-            "node": "새 실패 추리기 + 임베드 조립",
+            "node": "새 실패 → 알림 1건으로 묶기",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "새 실패 추리기 + 임베드 조립": {
+    "새 실패 → 알림 1건으로 묶기": {
       "main": [
         [
           {

@@ -67,8 +67,9 @@ check('첫 실행 + 실패 이력 없음: 기준선 0, 알림 없음', () => {
 check('새 실패만 알린다', () => {
   const store = { lastSeenRunId: 20 };
   const out = run(store, [mkRun(30), mkRun(25), mkRun(20), mkRun(10)]);
+  assert.equal(out.length, 1, '여러 건이어도 메시지는 1개여야 한다');
   assert.deepEqual(
-    out.map((i) => i.json.embeds[0].footer.text),
+    out[0].json.embeds.map((e) => e.footer.text),
     ['jump-section • run #25', 'jump-section • run #30'],
     '새 실패만, 오래된 것부터 나와야 한다',
   );
@@ -96,6 +97,7 @@ check('Discord 임베드 형태로 나온다', () => {
   const [item] = run({ lastSeenRunId: 1 }, [mkRun(2)]);
   const e = embedOf(item);
   assert.equal(item.json.embeds.length, 1);
+  assert.equal(item.json.content, undefined, '넘치지 않으면 content 를 붙이지 않는다');
   assert.equal(e.title, '🔴 CI 실패');
   assert.equal(e.url, 'https://example.com/2');
   assert.equal(e.color, 15158332);
@@ -128,6 +130,21 @@ check('head_commit / actor 가 없어도 죽지 않는다', () => {
   const e = embedOf(item);
   assert.equal(e.description, '`abcdef1` ');
   assert.equal(e.fields.find((f) => f.name === '실행자').value, '?');
+});
+
+check('여러 건이 한꺼번에 깨져도 HTTP 호출은 1회 (묶기)', () => {
+  const runs = [5, 4, 3, 2].map(mkRun);
+  const out = run({ lastSeenRunId: 1 }, runs);
+  assert.equal(out.length, 1, 'item 이 여러 개면 HTTP 노드가 그만큼 호출된다');
+  assert.equal(out[0].json.embeds.length, 4);
+});
+
+check('임베드 10개를 넘으면 잘렸다는 사실을 알린다', () => {
+  const runs = Array.from({ length: 13 }, (_, i) => mkRun(100 + i));
+  const [item] = run({ lastSeenRunId: 1 }, runs);
+  assert.equal(item.json.embeds.length, 10, 'Discord 상한은 임베드 10개다');
+  assert.match(item.json.content, /13건 중 10건/);
+  assert.match(item.json.content, /\+3건/);
 });
 
 console.log(failed ? '실패한 케이스가 있습니다' : '전체 통과');
