@@ -68,8 +68,8 @@ check('새 실패만 알린다', () => {
   const store = { lastSeenRunId: 20 };
   const out = run(store, [mkRun(30), mkRun(25), mkRun(20), mkRun(10)]);
   assert.deepEqual(
-    out.map((i) => i.json.runNumber),
-    [25, 30],
+    out.map((i) => i.json.embeds[0].footer.text),
+    ['jump-section • run #25', 'jump-section • run #30'],
     '새 실패만, 오래된 것부터 나와야 한다',
   );
   assert.equal(store.lastSeenRunId, 30);
@@ -89,23 +89,45 @@ check('같은 목록을 두 번 폴링해도 한 번만 알린다 (중복 방지
   assert.equal(run(store, runs).length, 0, '두 번째 폴링에서 중복 알림이 나갔다');
 });
 
+// ── 임베드 조립. 이전에는 HTTP 노드의 551자 한 줄 표현식이라 테스트가 불가능했다.
+const embedOf = (item) => item.json.embeds[0];
+
+check('Discord 임베드 형태로 나온다', () => {
+  const [item] = run({ lastSeenRunId: 1 }, [mkRun(2)]);
+  const e = embedOf(item);
+  assert.equal(item.json.embeds.length, 1);
+  assert.equal(e.title, '🔴 CI 실패');
+  assert.equal(e.url, 'https://example.com/2');
+  assert.equal(e.color, 15158332);
+  assert.deepEqual(
+    e.fields.map((f) => f.name),
+    ['브랜치', '트리거', '실행자'],
+  );
+  assert.equal(e.footer.text, 'jump-section • run #2');
+});
+
+check('description 은 짧은 sha + 커밋 첫 줄', () => {
+  const [item] = run({ lastSeenRunId: 1 }, [mkRun(2)]);
+  assert.equal(embedOf(item).description, '`abcdef1` commit 2');
+});
+
 check('커밋 메시지는 첫 줄만, 120자로 자른다', () => {
-  const store = { lastSeenRunId: 1 };
   const long = mkRun(2);
   long.head_commit.message = `${'가'.repeat(200)}\n두번째 줄`;
-  const [item] = run(store, [long]);
-  assert.equal(item.json.commitMessage.length, 120);
-  assert.ok(!item.json.commitMessage.includes('두번째'));
+  const [item] = run({ lastSeenRunId: 1 }, [long]);
+  const desc = embedOf(item).description;
+  assert.ok(!desc.includes('두번째'), '두 번째 줄이 섞였다');
+  assert.equal(desc.split('` ')[1].length, 120);
 });
 
 check('head_commit / actor 가 없어도 죽지 않는다', () => {
-  const store = { lastSeenRunId: 1 };
   const bare = mkRun(2);
   delete bare.head_commit;
   delete bare.actor;
-  const [item] = run(store, [bare]);
-  assert.equal(item.json.commitMessage, '');
-  assert.equal(item.json.actor, '?');
+  const [item] = run({ lastSeenRunId: 1 }, [bare]);
+  const e = embedOf(item);
+  assert.equal(e.description, '`abcdef1` ');
+  assert.equal(e.fields.find((f) => f.name === '실행자').value, '?');
 });
 
 console.log(failed ? '실패한 케이스가 있습니다' : '전체 통과');
