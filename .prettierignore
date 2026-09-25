@@ -5,3 +5,5 @@ build
 coverage
 # Next.js 생성 파일 (docs/.gitignore 에도 있다)
 next-env.d.ts
+# claude-config 서브모듈 — 그 레포의 포맷을 따른다. 여기서 쓰면 서브모듈이 더러워진다
+.claude-config
